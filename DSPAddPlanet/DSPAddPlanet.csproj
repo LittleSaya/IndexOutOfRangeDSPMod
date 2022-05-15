@@ -291,11 +291,13 @@
     <Analyzer Include="..\packages\BepInEx.Analyzers.1.0.8\analyzers\dotnet\cs\BepInEx.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Doc\parameter_number.png" />
+    <Content Include="Doc\screenshot1.jpg" />
+    <Content Include="Doc\screenshot2.jpg" />
+    <Content Include="Doc\screenshot3.jpg" />
     <Content Include="thunderstore\icon.png" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Doc\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\BepInEx.Core.5.4.19\build\BepInEx.Core.targets" Condition="Exists('..\packages\BepInEx.Core.5.4.19\build\BepInEx.Core.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

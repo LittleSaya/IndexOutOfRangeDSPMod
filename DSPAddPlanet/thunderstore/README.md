@@ -4,7 +4,7 @@
 
 **BACKUP YOUR SAVE FILE FIRST**
 
-It's currently **UNRECOVERABLE** after using this mod.
+It's currently **UNRESTORABLE** after using this mod.
 
 ## Introduce
 
@@ -42,7 +42,7 @@ New planets will be added in the same order as they are written in the config fi
 
 ### Format
 
-One planet per row, row format is similar to URL query string (but not the same, the parser used here is extremely simple).
+One planet per row, empty rows and comment rows begin with '#' are allowed, row format is similar to URL query string (but not the same, the parser used here is extremely simple).
 
 Example: `uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=4&number=5&gasGiant=false`
 
@@ -88,7 +88,19 @@ forcePlanetRadius (optional): default false is false. if you want to test planet
 
 About the 'number' parameter:
 
-[image here]
+![parameter_number.png](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/parameter_number.png "About the 'number' parameter")
+
+### Example config file
+
+```
+# Add additional planets to your game.
+# New planets will be added in the same order as they are written in this file.
+# The format of the config value is similar to URL query string (but not the same, the parser used here is extremely simple)
+# For detailed description, please refer to https://dsp.thunderstore.io/package/IndexOutOfRange/DSPAddPlanet/
+(EXAMPLE)uniqueStarId=UNIQUE_STAR_ID&index=INDEX&orbitAround=ORBIT_AROUND&orbitIndex=ORBIT_INDEX&number=NUMBER&gasGiant=GAS_GIANT&info_seed=INFO_SEED&gen_seed=GEN_SEED&planetRadius=PLANET_RADIUS&forcePlanetRadius=FORCE_PLANET_RADIUS&orbitalPeriod=ORBITAL_PERIOD&rotationPeriod=ROTATION_PERIOD&isTidalLocked=IS_TIDAL_LOCKED&orbitInclination=ORBIT_INCLINATION&obliquity=OBLIQUITY&dontGenerateVein=DONT_GENERATE_VEIN
+
+uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&number=4&gasGiant=false&planetRadius=600
+```
 
 ### Other important things
 
@@ -96,9 +108,11 @@ Careful about the name of your save file when you save your game because new pla
 
 ### Some screenshots
 
-[image here]
+![screenshot1.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot1.jpg "screenshot1")
 
-[image here]
+![screenshot2.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot2.jpg "screenshot2")
+
+![screenshot3.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot3.jpg "screenshot3")
 
 ## Misc
 
