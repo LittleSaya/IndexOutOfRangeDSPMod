@@ -1,3 +1,7 @@
+For another languages of this README, please refer to
+
+[中文说明](https://github.com/LittleSaya/IndexOutOfRangeDSPMod/blob/master/DSPAddPlanet/README-zh-Hans.md "中文说明")
+
 # DSP Add Planet
 
 ## CAUTION
@@ -5,6 +9,8 @@
 **BACKUP YOUR SAVE FILE FIRST**
 
 It's currently **UNRESTORABLE** after using this mod.
+
+And **BACKUP YOUR CONFIG FILE** if you are already using this mod.
 
 ## Introduce
 
@@ -16,9 +22,11 @@ The first thing you need to do is to make sure that the save file you want to ad
 
 To add new planets, you will need some information about original planets in your game, I made a small tool to make it easier to get those information, you can press V to open the star map and click the 'Add Planet' button on the bottom-right corner to open the tool.
 
-In the tool, stars are listed in the left panel, click on it to view info about planets in that star system. The current star system is on the top of all.
+In the tool, stars are listed in the left panel, click on it to view info about planets in that star system, include planet's index, orbitIndex, orbitAround, number etc. The current star system is on the top of all.
 
 You can click 'Copy' button on the right to copy the uniqueStarId to your clipboard.
+
+A 'unqiueStarId' is a string composed of save name, cluster string and star name, which can basically uniquely identify a star.
 
 Read 'Config file' section below on how to add planets in the config file.
 
@@ -34,7 +42,7 @@ Note that auto-saves have the same name as your last loaded game (though it's no
 
 The config file lies in your game's save file directory, in a sub-directory named 'modData/IndexOutOfRange.DSPAddPlanet', file name 'config.txt'.
 
-For example 'C:\Users\administrator\Documents\Dyson Sphere Program\Save\modData\IndexOutOfRange.DSPAddPlanet\config.txt'
+For example `C:\Users\administrator\Documents\Dyson Sphere Program\Save\modData\IndexOutOfRange.DSPAddPlanet\config.txt`
 
 ### Planet order
 
@@ -50,7 +58,8 @@ Example: `uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbit
 
 ```
      uniqueStarId (required): a unique id of the target star composed of your save name, cluster string and star name,
-                              for example, if '2_test' is your save name, '44525415-64-A10' is your cluster name, 'Erakis' is your star name, then your uniqueStarId will be '2_test-44525415-64-A10-Erakis'
+                              for example, if '2_test' is your save name, '44525415-64-A10' is your cluster name, 'Erakis' is the name of the star you want to add new planets to,
+                              then your uniqueStarId will be '2_test-44525415-64-A10-Erakis'
 
             index (required): the index of your new planet, should be larger than the index of the last original planet in your target system,
                               for example if your target system originally has 4 planets, you want to add 1 new planet, then this new planet's index should be 4 (start from 0)
@@ -70,7 +79,7 @@ Example: `uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbit
      planetRadius (optional): default value is 200. as it's named, the radius of your new planet, the default radius is a normal size, the max radius is set to 600
                               value 200, 400 and 600 are tested, 800 caused problems
 
-forcePlanetRadius (optional): default false is false. if you want to test planet radius larger than 600, you need to set this to true, 
+forcePlanetRadius (optional): default value is false. if you want to test planet radius larger than 600, you need to set this to true, 
 
     orbitalPeriod (optional): default value is 3600. orbital revolution, in seconds
 
@@ -132,4 +141,4 @@ Thanks to the author of GalacticScale for how to properly deal with the GetModPl
 
 Thanks to the author of ILSpy for creating such a powerful tool.
 
-Thanks to the author of BepInEx for creating the modding platform we rely on.
+Thanks to the author of BepInEx and Harmony for creating the modding platforms we rely on.

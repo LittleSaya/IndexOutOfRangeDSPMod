@@ -283,6 +283,7 @@
     <None Include="app.config" />
     <None Include="NEW_GAME_VERSION_CHECK_LIST.md" />
     <None Include="packages.config" />
+    <None Include="README-zh-Hans.md" />
     <None Include="README.md" />
     <None Include="thunderstore\manifest.json" />
   </ItemGroup>
