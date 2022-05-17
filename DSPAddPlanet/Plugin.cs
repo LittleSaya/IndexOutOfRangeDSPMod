@@ -19,7 +19,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.3";
+        public const string PLUGIN_VERSION = "0.0.4";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -79,6 +79,9 @@ namespace DSPAddPlanet
 
             // 针对行星模型的补丁
             harmony.PatchAll(typeof(Patch_PlanetModeling));
+
+            // 针对垃圾重力的补丁
+            harmony.PatchAll(typeof(Patch_TrashSystem));
         }
 
         /// <summary>
@@ -740,6 +743,25 @@ namespace DSPAddPlanet
                     }
                 }
                 return codes.AsEnumerable();
+            }
+        }
+
+        class Patch_TrashSystem
+        {
+            [HarmonyTranspiler]
+            [HarmonyPatch(typeof(TrashSystem), "Gravity")]
+            static IEnumerable<CodeInstruction> TrashSystem_Gravity_Transpiler (IEnumerable<CodeInstruction> instructions)
+            {
+                CodeMatcher matcher = new CodeMatcher(instructions);
+
+                matcher.MatchForward(
+                    true,
+                    new CodeMatch(OpCodes.Ldc_R8, 600.0)
+                );
+
+                matcher.Set(OpCodes.Ldc_R8, 800.0);
+
+                return matcher.InstructionEnumeration();
             }
         }
     }
