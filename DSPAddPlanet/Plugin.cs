@@ -19,7 +19,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.4";
+        public const string PLUGIN_VERSION = "0.0.5";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -74,14 +74,10 @@ namespace DSPAddPlanet
             // _CreateStarPlanets 的 Postfix 补丁是为新增行星这一核心业务服务的
             harmony.PatchAll(typeof(Patch_StarGen_CreateStarPlanets));
 
-            // 针对生成矿脉和 vege 的补丁
             harmony.PatchAll(typeof(Patch_PlanetAlgorithms));
-
-            // 针对行星模型的补丁
             harmony.PatchAll(typeof(Patch_PlanetModeling));
-
-            // 针对垃圾重力的补丁
             harmony.PatchAll(typeof(Patch_TrashSystem));
+            harmony.PatchAll(typeof(Patch_PlayerController));
         }
 
         /// <summary>
@@ -748,6 +744,11 @@ namespace DSPAddPlanet
 
         class Patch_TrashSystem
         {
+            /// <summary>
+            /// 某种情况下高度大于600的垃圾会直接消失，这里把这个限制改成800
+            /// </summary>
+            /// <param name="instructions"></param>
+            /// <returns></returns>
             [HarmonyTranspiler]
             [HarmonyPatch(typeof(TrashSystem), "Gravity")]
             static IEnumerable<CodeInstruction> TrashSystem_Gravity_Transpiler (IEnumerable<CodeInstruction> instructions)
@@ -762,6 +763,33 @@ namespace DSPAddPlanet
                 matcher.Set(OpCodes.Ldc_R8, 800.0);
 
                 return matcher.InstructionEnumeration();
+            }
+        }
+
+        class Patch_PlayerController
+        {
+            /// <summary>
+            /// 进入蓝图模式时将蓝图相机的行星半径修改为当前的行星半径
+            /// </summary>
+            [HarmonyPostfix, HarmonyPatch(typeof(PlayerController), nameof(PlayerController.OpenBlueprintCopyMode))]
+            static void PlayerController_OpenBlueprintCopyMode_Postfix ()
+            {
+                if (GameMain.localPlanet != null)
+                {
+                    GameCamera.instance.blueprintPoser.planetRadius = GameMain.localPlanet.realRadius;
+                }
+            }
+
+            /// <summary>
+            /// 进入蓝图模式时将蓝图相机的行星半径修改为当前的行星半径
+            /// </summary>
+            [HarmonyPostfix, HarmonyPatch(typeof(PlayerController), nameof(PlayerController.OpenBlueprintPasteMode))]
+            static void PlayerController_OpenBlueprintPasteMode_Postfix ()
+            {
+                if (GameMain.localPlanet != null)
+                {
+                    GameCamera.instance.blueprintPoser.planetRadius = GameMain.localPlanet.realRadius;
+                }
             }
         }
     }
