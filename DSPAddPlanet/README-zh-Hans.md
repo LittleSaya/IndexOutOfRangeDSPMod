@@ -116,8 +116,6 @@ uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&nu
 
 ## 待办
 
-- 不用重新启动游戏，只重新载入存档就能使修改过的配置文件生效
-
 ## 兼容性
 
 ### 0.0.1 ~ 0.0.6
