@@ -1,4 +1,4 @@
-For another languages of this README, please refer to
+For other languages of this README, please refer to
 
 [中文说明](https://github.com/LittleSaya/IndexOutOfRangeDSPMod/blob/master/DSPAddPlanet/README-zh-Hans.md "中文说明")
 
@@ -138,6 +138,7 @@ Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work un
 ### 0.0.4 -> 0.0.5
 
 - Let the minimal and maximal altitude of blueprint camera related to current planet's radius (better experience when you use blueprint on planets with large radius)
+- Modifications made to config file will take effect when loading saved games, no longer need to restart the game
 
 ### 0.0.3 -> 0.0.4
 

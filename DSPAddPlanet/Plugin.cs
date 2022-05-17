@@ -39,11 +39,6 @@ namespace DSPAddPlanet
         new public ManualLogSource Logger { get => base.Logger; }
 
         /// <summary>
-        /// 是否有配置文件
-        /// </summary>
-        private bool hasConfig = false;
-
-        /// <summary>
         /// 所有需要新增的星球，List中的内容是按照配置文件中约定的顺序存储的
         /// </summary>
         private Dictionary<string, List<AdditionalPlanetConfig>> additionalPlanets = new Dictionary<string, List<AdditionalPlanetConfig>>();
@@ -57,27 +52,22 @@ namespace DSPAddPlanet
         {
             instance = this;
 
-            TryReadConfig();
-
             Harmony harmony = new Harmony(PLUGIN_GUID);
 
-            // _OnCreate 的 Postfix 补丁会调用 Init 函数，负责初始化 UI 以及读取配置文件
-            harmony.PatchAll(typeof(Patch_UIGame__OnCreate));
+            // 针对配置文件的补丁
+            harmony.PatchAll(typeof(Patch_GameData));
 
-            // _OnFree 、 _OnUpdate 、 _OnDestroy 、 _OnInit 和 ShutAllFunctionWindow 都是为那几个 UI 组件服务的
-            harmony.PatchAll(typeof(Patch_UIGame__OnFree));
-            harmony.PatchAll(typeof(Patch_UIGame__OnUpdate));
-            harmony.PatchAll(typeof(Patch_UIGame__OnDestroy));
-            harmony.PatchAll(typeof(Patch_UIGame__OnInit));
-            harmony.PatchAll(typeof(Patch_UIGame_ShutAllFunctionWindow));
-
-            // _CreateStarPlanets 的 Postfix 补丁是为新增行星这一核心业务服务的
+            // 针对mod核心业务的补丁
             harmony.PatchAll(typeof(Patch_StarGen_CreateStarPlanets));
-
             harmony.PatchAll(typeof(Patch_PlanetAlgorithms));
+
+            // 其他修修补补
             harmony.PatchAll(typeof(Patch_PlanetModeling));
             harmony.PatchAll(typeof(Patch_TrashSystem));
             harmony.PatchAll(typeof(Patch_PlayerController));
+
+            // 针对mod新增的UI组件的补丁
+            harmony.PatchAll(typeof(Patch_UIGame));
         }
 
         /// <summary>
@@ -85,6 +75,8 @@ namespace DSPAddPlanet
         /// </summary>
         private void TryReadConfig ()
         {
+            additionalPlanets.Clear();
+
             // 尝试读取配置文件
             string modDataDir = GameConfig.gameSaveFolder + "modData/IndexOutOfRange.DSPAddPlanet/";
             if (!Directory.Exists(modDataDir))
@@ -144,7 +136,6 @@ namespace DSPAddPlanet
                 writer.Dispose();
 
                 // 在没有配置文件的情况下，不对游戏进行修改
-                hasConfig = false;
                 return;
             }
 
@@ -290,8 +281,6 @@ namespace DSPAddPlanet
 
                 Instance.Logger.LogInfo($"新增行星：{uniqueStarId}: {config}");
             }
-
-            hasConfig = true;
         }
 
         /// <summary>
@@ -324,12 +313,14 @@ namespace DSPAddPlanet
             );
         }
 
-        [HarmonyPatch(typeof(UIGame), "_OnCreate")]
-        class Patch_UIGame__OnCreate
+        class Patch_UIGame
         {
             static private bool isCreated = false;
 
-            static void Postfix ()
+            static private bool isInit = false;
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnCreate")]
+            static void UIGame__OnCreate_Postfix ()
             {
                 if (isCreated)
                 {
@@ -341,21 +332,15 @@ namespace DSPAddPlanet
 
                 Instance.CreateUI();
             }
-        }
 
-        [HarmonyPatch(typeof(UIGame), "_OnFree")]
-        class Patch_UIGame__OnFree
-        {
-            static void Postfix ()
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnFree")]
+            static void UIGame__OnFree_Postfix ()
             {
                 Instance.uiAddPlanet._Free();
             }
-        }
 
-        [HarmonyPatch(typeof(UIGame), "_OnUpdate")]
-        class Patch_UIGame__OnUpdate
-        {
-            static void Postfix ()
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnUpdate")]
+            static void UIGame__OnUpdate_Postfix ()
             {
                 if (GameMain.isPaused || !GameMain.isRunning)
                 {
@@ -363,23 +348,15 @@ namespace DSPAddPlanet
                 }
                 Instance.uiAddPlanet._Update();
             }
-        }
 
-        [HarmonyPatch(typeof(UIGame), "_OnDestroy")]
-        class Patch_UIGame__OnDestroy
-        {
-            static void Postfix ()
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnDestroy")]
+            static void UIGame__OnDestroy_Postfix ()
             {
                 Instance.uiAddPlanet._Destroy();
             }
-        }
 
-        [HarmonyPatch(typeof(UIGame), "_OnInit")]
-        class Patch_UIGame__OnInit
-        {
-            static private bool isInit = false;
-
-            static void Postfix ()
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnInit")]
+            static void UIGame__OnInit_Postfix ()
             {
                 if (isInit)
                 {
@@ -389,12 +366,9 @@ namespace DSPAddPlanet
 
                 Instance.uiAddPlanet._Init(Instance.uiAddPlanet.data);
             }
-        }
 
-        [HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
-        class Patch_UIGame_ShutAllFunctionWindow
-        {
-            static void Postfix ()
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
+            static void UIGame_ShutAllFunctionWindow_Postfix ()
             {
                 Instance.uiAddPlanet._Close();
             }
@@ -405,7 +379,7 @@ namespace DSPAddPlanet
         {
             static void Postfix (GalaxyData galaxy, StarData star, GameDesc gameDesc)
             {
-                if (!Instance.hasConfig)
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
                 {
                     // 如果没有配置文件的话，不对游戏进行任何修改
                     return;
@@ -481,6 +455,12 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
             static bool PlanetAlgorithm_GenerateVeins_Prefix (PlanetAlgorithm __instance)
             {
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                {
+                    // 如果没有配置文件的话，不对游戏进行任何修改
+                    return true;
+                }
+
                 PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
 
@@ -519,6 +499,11 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
             static bool PlanetAlgorithm0_GenerateVeins_Prefix (PlanetAlgorithm0 __instance)
             {
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                {
+                    return true;
+                }
+
                 PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm0), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
 
@@ -553,6 +538,11 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
             static bool PlanetAlgorithm7_GenerateVeins_Prefix (PlanetAlgorithm7 __instance)
             {
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                {
+                    return true;
+                }
+
                 PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm7), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
 
@@ -587,6 +577,11 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
             static bool PlanetAlgorithm11_GenerateVeins_Prefix (PlanetAlgorithm11 __instance)
             {
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                {
+                    return true;
+                }
+
                 PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm11), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
 
@@ -621,6 +616,11 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
             static bool PlanetAlgorithm12_GenerateVeins_Prefix (PlanetAlgorithm12 __instance)
             {
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                {
+                    return true;
+                }
+
                 PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm12), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
 
@@ -655,6 +655,11 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
             static bool PlanetAlgorithm13_GenerateVeins_Prefix (PlanetAlgorithm13 __instance)
             {
+                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                {
+                    return true;
+                }
+
                 PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm13), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
 
@@ -687,6 +692,9 @@ namespace DSPAddPlanet
             }
         }
 
+        /// <summary>
+        /// 将对GetModPlane的调用修改为对GetModPlaneInt的调用，新的方法的返回值与行星的实际半径相关
+        /// </summary>
         class Patch_PlanetModeling
         {
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetModelingManager), "ModelingPlanetMain")]
@@ -790,6 +798,18 @@ namespace DSPAddPlanet
                 {
                     GameCamera.instance.blueprintPoser.planetRadius = GameMain.localPlanet.realRadius;
                 }
+            }
+        }
+
+        class Patch_GameData
+        {
+            /// <summary>
+            /// 每次载入存档之前，都重新读取一次配置文件
+            /// </summary>
+            [HarmonyPrefix, HarmonyPatch(typeof(GameData), nameof(GameData.Import))]
+            static void GameData_Import_Prefix ()
+            {
+                Instance.TryReadConfig();
             }
         }
     }
