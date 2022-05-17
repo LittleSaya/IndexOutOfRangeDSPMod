@@ -123,6 +123,26 @@ Careful about the name of your save file when you save your game because new pla
 
 ![screenshot3.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot3.jpg "screenshot3")
 
+## Todo
+
+- Let changes made to config.txt take effect without relaunch the application
+
+## Compatibility
+
+### 0.0.1 ~ 0.0.3
+
+Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
+
+## Change log
+
+### 0.0.2 -> 0.0.3
+
+- Fix transport ships failing to dock on the transport station on a large radius planet
+
+### 0.0.1 -> 0.0.2
+
+- Add chinese translated README
+
 ## Misc
 
 ### About the unrecoverable effects on you save file

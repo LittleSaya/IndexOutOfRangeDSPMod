@@ -53,7 +53,7 @@
                           举例来说，如果“2_test”是您的存档名称，“44525415-64-A10”是您的星区名称，“Erakis”是您想要添加新的行星的恒星名称，则该恒星的“唯一恒星ID”就是“2_test-44525415-64-A10-Erakis”
 
             index (必须): 新行星的索引，应该比目标恒星的最后一个行星的索引大1
-                          比如说如果原来这个星系里由4个行星，您新增了一个行星，那么这个新行星的索引就是4（索引从0开始）
+                          比如说如果原来这个星系里有4个行星，您新增了一个行星，那么这个新行星的索引就是4（索引从0开始）
 
       orbitAround (必须): 新行星围绕哪个行星旋转，设置成目标行星的“number”就围绕目标行星旋转，设置成0就围绕恒星旋转
 
@@ -113,6 +113,26 @@ uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&nu
 ![screenshot2.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot2.jpg "screenshot2")
 
 ![screenshot3.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot3.jpg "screenshot3")
+
+## 待办
+
+- 不用重新启动游戏，只重新载入存档就能使修改过的配置文件生效
+
+## 兼容性
+
+### 0.0.1 ~ 0.0.3
+
+Build target ：游戏版本 0.9.25.12201 ， BepInEx 版本： 5.4.19 （应该也能够在 5.4.17 版本下正常运行）
+
+## 更新日志
+
+### 0.0.2 -> 0.0.3
+
+- 修复大半径行星上的物流站点无法正常停靠的问题
+
+### 0.0.1 -> 0.0.2
+
+- 添加中文翻译的 README
 
 ## 其他
 

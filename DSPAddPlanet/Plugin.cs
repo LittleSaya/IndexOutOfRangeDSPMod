@@ -19,7 +19,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.2";
+        public const string PLUGIN_VERSION = "0.0.3";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -444,13 +444,14 @@ namespace DSPAddPlanet
 
                     Instance.Logger.LogInfo($"    planetAlgo={planet.algoId}");
 
-                    // 增大行星体积
+                    // 增大行星半径
                     if (!config.GasGiant)
                     {
                         planet.radius = config.Radius;
                         planet.scale = 1f;
                         planet.precision = 200;
                         planet.segment = 5;
+                        star.galaxy.astroPoses[planet.id].uRadius = planet.realRadius;
                     }
 
                     // 潮汐锁定
