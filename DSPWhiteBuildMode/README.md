@@ -6,7 +6,7 @@ For other languages of this README, please refer to
 
 ## Screenshot
 
-[screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPWhiteBuildMode/Doc/screenshot.jpg "screenshot")
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPWhiteBuildMode/Doc/screenshot.jpg "screenshot")
 
 ## Introduction
 
@@ -14,7 +14,7 @@ This mod gives an option to make the build mode similar to blueprint mode, which
 
 After enabled this mod, when you enter build mode a checkbox will appear on the bottom-right corner of your screen, check it to enable white mode in build mode, uncheck it to restore to default.
 
-[screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPWhiteBuildMode/Doc/white-mode-checkbox.jpg "screenshot")
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPWhiteBuildMode/Doc/white-mode-checkbox.jpg "screenshot")
 
 Your configuration will be saved when you exit the game.
 
