@@ -1,18 +1,24 @@
 For other languages of this README, please refer to
 
-[中文说明]( "中文说明")
+[中文说明](https://github.com/LittleSaya/IndexOutOfRangeDSPMod/blob/master/DSPColorfulBuildGrid/README-zh-Hans.md "中文说明")
 
 # DSP Colorful Building Grid
 
 ## Screenshots
 
-[images here]
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPColorfulBuildGrid/Doc/screenshot1.jpg "screenshot")
+
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPColorfulBuildGrid/Doc/screenshot2.jpg "screenshot")
+
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPColorfulBuildGrid/Doc/screenshot3.jpg "screenshot")
+
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPColorfulBuildGrid/Doc/screenshot4.jpg "screenshot")
 
 ## Introduction
 
 This mod allows to change color of the building grid. When you enter building mode, a small panel with text 'Colorful grid' will appear at bottom-right corner of screen, check it to use custom color, click the cof icon to set the color, uncheck to restore to default color.
 
-[image here]
+![color picker](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPColorfulBuildGrid/Doc/color-picker.jpg "color picker")
 
 Settings will be saved when you exit the game.
 
