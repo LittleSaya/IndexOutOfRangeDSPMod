@@ -2,7 +2,7 @@
 
 ## 截图
 
-[image here]
+[screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPWhiteBuildMode/Doc/screenshot.jpg "screenshot")
 
 ## 介绍
 
@@ -10,6 +10,6 @@
 
 启用该mod后，当玩家进入建造模式时，屏幕右下角会出现一个“White Mode”的勾选框，勾选即可在建造模式生效，取消勾选恢复默认。
 
-[image here]
+[screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPWhiteBuildMode/Doc/white-mode-checkbox.jpg "screenshot")
 
 勾选状态会在游戏退出时保存。
