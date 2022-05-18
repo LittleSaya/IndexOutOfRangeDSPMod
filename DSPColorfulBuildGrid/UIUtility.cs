@@ -118,10 +118,10 @@ namespace DSPColorfulBuildingGrid
 
             GameObject goSlider = go.transform.Find("Slider").gameObject;
             Slider cmpSlider = goSlider.GetComponent<Slider>();
-            cmpSlider.value = initialValue;
             cmpSlider.minValue = minValue;
             cmpSlider.maxValue = maxValue;
             cmpSlider.wholeNumbers = wholeNumbers;
+            cmpSlider.value = initialValue;
             foreach (var action in onValueChange)
             {
                 cmpSlider.onValueChanged.AddListener(action);

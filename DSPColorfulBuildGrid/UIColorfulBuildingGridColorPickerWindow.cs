@@ -34,7 +34,7 @@ namespace DSPColorfulBuildingGrid
 
             Image goColorPreview_cmpImage = goColorPreview.GetComponent<Image>();
             goColorPreview_cmpImage.sprite = Cache.ResourceCache.SpriteRectP1;
-            goColorPreview_cmpImage.color = new Color(redInitialValue, greenInitialValue, blueInitialValue, alphaInitialValue);
+            goColorPreview_cmpImage.color = new Color(redInitialValue / 255, greenInitialValue / 255, blueInitialValue / 255, alphaInitialValue / 255);
             //goColorPreview_cmpImage.material = Cache.ResourceCache.MaterialBuildGridMat;
 
             RectTransform goColorPreview_cmpRect = goColorPreview.GetComponent<RectTransform>();
