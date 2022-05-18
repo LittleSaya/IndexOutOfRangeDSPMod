@@ -5,6 +5,13 @@ VisualStudioVersion = 16.0.32228.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSPAddPlanet", "DSPAddPlanet\DSPAddPlanet.csproj", "{67157A1A-8F83-4B4B-A8B1-A279EDB9947D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSPWhiteBuildMode", "DSPWhiteBuildMode\DSPWhiteBuildMode.csproj", "{65B024A2-1761-41F8-964F-894B71862B91}"
+	ProjectSection(ProjectDependencies) = postProject
+		{40B49DD8-D376-40C0-A1CD-10B69734F81F} = {40B49DD8-D376-40C0-A1CD-10B69734F81F}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{40B49DD8-D376-40C0-A1CD-10B69734F81F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +22,14 @@ Global
 		{67157A1A-8F83-4B4B-A8B1-A279EDB9947D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{67157A1A-8F83-4B4B-A8B1-A279EDB9947D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{67157A1A-8F83-4B4B-A8B1-A279EDB9947D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65B024A2-1761-41F8-964F-894B71862B91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65B024A2-1761-41F8-964F-894B71862B91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65B024A2-1761-41F8-964F-894B71862B91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65B024A2-1761-41F8-964F-894B71862B91}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40B49DD8-D376-40C0-A1CD-10B69734F81F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40B49DD8-D376-40C0-A1CD-10B69734F81F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40B49DD8-D376-40C0-A1CD-10B69734F81F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40B49DD8-D376-40C0-A1CD-10B69734F81F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

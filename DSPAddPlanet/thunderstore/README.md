@@ -125,8 +125,6 @@ Careful about the name of your save file when you save your game because new pla
 
 ## Todo
 
-- Let changes made to config.txt take effect without relaunch the application
-
 ## Compatibility
 
 ### 0.0.1 ~ 0.0.6
