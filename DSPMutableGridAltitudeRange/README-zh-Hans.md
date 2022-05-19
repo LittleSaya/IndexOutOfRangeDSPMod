@@ -2,7 +2,7 @@
 
 ## 截图
 
-[images here]
+![screenshot](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPMutableGridAltitudeRange/Doc/screenshot.jpg "screenshot")
 
 ## 介绍
 
@@ -10,7 +10,9 @@
 
 该mod给予了玩家一个调整建造网格显示海拔范围上下限的选项，使玩家可以看见更高处或更低处的网格而不用把鼠标挪动过去。
 
-[image here]
+![config window](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPMutableGridAltitudeRange/Doc/config-window.jpg "config window")
+
+勾选启用自定义的海拔范围，点击齿轮按钮打开设置窗口，取消勾选恢复默认设置，游戏退出时会保存设置。
 
 ## 兼容性
 
