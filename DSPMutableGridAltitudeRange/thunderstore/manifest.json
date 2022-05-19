@@ -1,0 +1,9 @@
+{
+  "name": "DSPMutableGridAltitudeRange",
+  "description": "See grid under sea or on the mountain without moving mouse",
+  "version_number": "0.0.1",
+  "dependencies": [
+    "xiaoye97-BepInEx-5.4.17"
+  ],
+  "website_url": "https://github.com/LittleSaya/IndexOutOfRangeDSPMod/tree/master/DSPMutableGridAltitudeRange"
+}

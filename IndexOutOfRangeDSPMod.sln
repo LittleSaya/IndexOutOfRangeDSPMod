@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSPColorfulBuildingGrid", "DSPColorfulBuildGrid\DSPColorfulBuildingGrid.csproj", "{6EB7E82B-ED65-44A5-8AE8-D2388A324653}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSPMutableGridAltitudeRange", "DSPMutableGridAltitudeRange\DSPMutableGridAltitudeRange.csproj", "{4978D9B1-A0DB-4E68-B4BB-985D180767D6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,10 @@ Global
 		{6EB7E82B-ED65-44A5-8AE8-D2388A324653}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6EB7E82B-ED65-44A5-8AE8-D2388A324653}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EB7E82B-ED65-44A5-8AE8-D2388A324653}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4978D9B1-A0DB-4E68-B4BB-985D180767D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4978D9B1-A0DB-4E68-B4BB-985D180767D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4978D9B1-A0DB-4E68-B4BB-985D180767D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4978D9B1-A0DB-4E68-B4BB-985D180767D6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
