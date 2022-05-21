@@ -19,7 +19,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.6";
+        public const string PLUGIN_VERSION = "0.0.7";
 
         public const float MAX_PLANET_RADIUS = 600;
 
