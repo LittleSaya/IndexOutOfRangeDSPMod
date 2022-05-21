@@ -127,11 +127,15 @@ Careful about the name of your save file when you save your game because new pla
 
 ## Compatibility
 
-### 0.0.1 ~ 0.0.6
+### 0.0.1 ~ 0.0.7
 
 Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
 
 ## Change log
+
+### 0.0.6 -> 0.0.7
+
+- Fix transport ships failing to dock on the transport station when there are too many new planets (Great thanks to GalacticScale)
 
 ### 0.0.5 -> 0.0.6
 

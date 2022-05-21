@@ -68,6 +68,9 @@ namespace DSPAddPlanet
 
             // 针对mod新增的UI组件的补丁
             harmony.PatchAll(typeof(Patch_UIGame));
+
+            // 针对运输船逻辑的补丁
+            harmony.PatchAll(typeof(Patch_StationComponent));
         }
 
         /// <summary>
@@ -811,6 +814,134 @@ namespace DSPAddPlanet
             {
                 Instance.TryReadConfig();
             }
+        }
+
+        public class Patch_StationComponent
+        {
+            /// <summary>
+            /// 1. 根据游戏的机制，一个恒星周围最多允许存在99个行星（编号为恒星ID+1到恒星ID+99），但是游戏原本只考虑了恒星自身以及恒星周围的9个行星，导致存在更多行星时运输船无法正常停靠，
+            ///     这段代码参考了 GalacticScale 的代码，并在其基础上加以完善，允许运输船在更多行星上停靠
+            /// 2. 参考 GalacticScale 的代码，游戏中运输船在寻路时会绕开距离恒星 2.5 倍半径的范围，导致靠近大恒星的行星无法正常停靠
+            /// </summary>
+            /// <param name="instructions"></param>
+            /// <returns></returns>
+            [HarmonyTranspiler]
+            [HarmonyPatch(typeof(StationComponent), "InternalTickRemote")]
+            public static IEnumerable<CodeInstruction> InternalTickRemoteTranspiler (IEnumerable<CodeInstruction> instructions)
+            {
+                // 首先修正搜索行星的范围
+                // 确定开始搜索的位置，应该在 if (shipData.stage == 0) 的位置
+                CodeMatcher matcher = new CodeMatcher(instructions);
+                matcher.MatchForward(false,
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Br),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("ShipData")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldfld && instruction.operand.ToString().Equals("System.Int32 stage")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Brtrue)
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("无法找到代码 if (shipData.stage == 0) 的位置");
+                    return instructions;
+                }
+
+                // 找到两处形如 A < B + 10 的代码，然后将 +10 修改为 +100
+                matcher.MatchForward(false,
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("System.Int32")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("System.Int32")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldc_I4_S && (sbyte)instruction.operand == 10),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Add),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Blt)
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("无法找到第一处形如 A < B + 10 的代码");
+                    return instructions;
+                }
+
+                matcher.Advance(2);
+                Instance.Logger.LogWarning($"{matcher.Pos}, {matcher.Opcode.Name}, {matcher.Operand.ToString()}");
+                matcher.SetOperandAndAdvance(100);
+
+                matcher.MatchForward(false,
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("System.Int32")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("System.Int32")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldc_I4_S && (sbyte)instruction.operand == 10),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Add),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Blt)
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("无法找到第二处形如 A < B + 10 的代码");
+                    return instructions;
+                }
+
+                matcher.Advance(2);
+                Instance.Logger.LogWarning($"{matcher.Pos}, {matcher.Opcode.Name}, {matcher.Operand.ToString()}");
+                matcher.SetOperandAndAdvance(100);
+
+                // 然后开始修正规避恒星半径的范围
+                // 这段代码应该在一段形如 if (A % 100 == 0) B *= 2.5f 的代码块中
+                matcher.MatchForward(true,
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("System.Int32")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldc_I4_S && (sbyte)instruction.operand == 100),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Rem),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Brtrue),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && instruction.operand.ToString().StartsWith("System.Single")),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldc_R4 && (float)instruction.operand == 2.5f),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Mul),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Stloc_S && instruction.operand.ToString().StartsWith("System.Single"))
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("无法找到形如 if (A % 100 == 0) B *= 2.5f 的代码");
+                    return instructions;
+                }
+
+                matcher.Advance(-2);
+                Instance.Logger.LogWarning($"{matcher.Pos}, {matcher.Opcode.Name}, {matcher.Operand.ToString()}");
+                matcher.SetOperandAndAdvance(1f);
+
+                return matcher.InstructionEnumeration();
+            }
+
+            //[HarmonyTranspiler]
+            //[HarmonyPatch(typeof(StationComponent), "InternalTickRemote")]
+            //public static IEnumerable<CodeInstruction> InternalTickRemoteTranspiler (IEnumerable<CodeInstruction> instructions)
+            //{
+            //    var codeMatcher = new CodeMatcher(instructions, il).MatchForward(false, new CodeMatch(op => op.opcode == OpCodes.Ldc_I4_S && op.OperandIs(10))); // Search for ldc.i4.s 10
+
+            //    if (codeMatcher.IsInvalid)
+            //    {
+            //        Instance.Logger.LogError("InternalTickRemote Transpiler Failed");
+            //        return instructions;
+            //    }
+
+            //    instructions = codeMatcher.Repeat(z => z // Repeat for all occurences 
+            //            .Set(OpCodes.Ldc_I4_S, 99)) // Replace operand with 99
+            //        .InstructionEnumeration();
+            //    return instructions;
+            //}
+
+            //[HarmonyTranspiler]
+            //[HarmonyPatch(typeof(StationComponent), "InternalTickRemote")]
+            //public static IEnumerable<CodeInstruction> InternalTickRemoteTranspiler2 (IEnumerable<CodeInstruction> instructions, ILGenerator il)
+            //{
+            //    var codeMatcher = new CodeMatcher(instructions, il).MatchForward(false, new CodeMatch(op => op.opcode == OpCodes.Ldc_R4 && op.OperandIs(2.5f))); // Search for ldc.r4 2.5f
+            //    if (codeMatcher.IsInvalid)
+            //    {
+            //        Instance.Logger.LogError("InternalTickRemote 2nd Transpiler Failed");
+            //        return instructions;
+            //    }
+            //    instructions = codeMatcher.Repeat(z => z // Repeat for all occurences
+            //           .Set(OpCodes.Ldc_R4, 1.0f)) // Replace operand with 1.0f
+            //        .InstructionEnumeration();
+
+            //    return instructions;
+            //}
         }
     }
 }
