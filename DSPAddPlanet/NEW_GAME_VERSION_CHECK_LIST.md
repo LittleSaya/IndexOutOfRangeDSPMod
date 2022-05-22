@@ -6,6 +6,8 @@
 
 TrashSystem 的 Gravity 方法中进行比较然后返回 false 的部分
 
+PlanetSimulator.SetPlanetData() 的代码
+
 # mod版本更新
 
 改代码

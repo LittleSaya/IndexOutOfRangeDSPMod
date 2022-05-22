@@ -19,7 +19,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.7";
+        public const string PLUGIN_VERSION = "0.0.8";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -71,6 +71,8 @@ namespace DSPAddPlanet
 
             // 针对运输船逻辑的补丁
             harmony.PatchAll(typeof(Patch_StationComponent));
+
+            harmony.PatchAll(typeof(Patch_PlanetSimulator));
         }
 
         /// <summary>
@@ -861,7 +863,6 @@ namespace DSPAddPlanet
                 }
 
                 matcher.Advance(2);
-                Instance.Logger.LogWarning($"{matcher.Pos}, {matcher.Opcode.Name}, {matcher.Operand.ToString()}");
                 matcher.SetOperandAndAdvance(100);
 
                 matcher.MatchForward(false,
@@ -879,7 +880,6 @@ namespace DSPAddPlanet
                 }
 
                 matcher.Advance(2);
-                Instance.Logger.LogWarning($"{matcher.Pos}, {matcher.Opcode.Name}, {matcher.Operand.ToString()}");
                 matcher.SetOperandAndAdvance(100);
 
                 // 然后开始修正规避恒星半径的范围
@@ -902,46 +902,68 @@ namespace DSPAddPlanet
                 }
 
                 matcher.Advance(-2);
-                Instance.Logger.LogWarning($"{matcher.Pos}, {matcher.Opcode.Name}, {matcher.Operand.ToString()}");
                 matcher.SetOperandAndAdvance(1f);
 
                 return matcher.InstructionEnumeration();
             }
+        }
 
-            //[HarmonyTranspiler]
-            //[HarmonyPatch(typeof(StationComponent), "InternalTickRemote")]
-            //public static IEnumerable<CodeInstruction> InternalTickRemoteTranspiler (IEnumerable<CodeInstruction> instructions)
-            //{
-            //    var codeMatcher = new CodeMatcher(instructions, il).MatchForward(false, new CodeMatch(op => op.opcode == OpCodes.Ldc_I4_S && op.OperandIs(10))); // Search for ldc.i4.s 10
+        /// <summary>
+        /// 修正行星大气的渲染半径，使其与行星半径有关
+        /// TODO: 改成使用 Transpiler
+        /// </summary>
+        public class Patch_PlanetSimulator
+        {
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetSimulator), nameof(PlanetSimulator.SetPlanetData))]
+            static bool PlanetSimulator_SetPlanetData_Prefix (
+                PlanetData planet,
+                PlanetSimulator __instance,
+                ref PlanetData ___planetData,
+                ref Transform ___atmoTrans0,
+                ref Transform ___atmoTrans1,
+                ref Material ___atmoMat,
+                ref Vector4 ___atmoMatRadiusParam,
+                ref Transform ___lookCamera,
+                ref UniverseSimulator ___universe,
+                ref StarSimulator ___star
+            )
+            {
+                ___planetData = planet;
+                if (___planetData.atmosMaterial != null)
+                {
+                    GameObject gameObject = new GameObject("Atmosphere");
+                    gameObject.layer = 31;
+                    ___atmoTrans0 = gameObject.transform;
+                    ___atmoTrans0.parent = __instance.transform;
+                    ___atmoTrans0.localPosition = Vector3.zero;
+                    GameObject gameObject2 = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                    gameObject2.layer = 31;
+                    ___atmoTrans1 = gameObject2.transform;
+                    ___atmoTrans1.parent = ___atmoTrans0;
+                    ___atmoTrans1.localPosition = Vector3.zero;
+                    UnityEngine.Object.Destroy(gameObject2.GetComponent<Collider>());
+                    Renderer component = gameObject2.GetComponent<Renderer>();
+                    Material material = (___atmoMat = (component.sharedMaterial = ___planetData.atmosMaterial));
+                    component.shadowCastingMode = ShadowCastingMode.Off;
+                    component.receiveShadows = false;
+                    component.lightProbeUsage = LightProbeUsage.Off;
+                    component.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                    ___atmoTrans1.localScale = Vector3.one * (planet.realRadius * 5f);
+                    // ("Radius [Planet(x) Ocean (y) & Atmos (z) & Enabled (w)]", Vector) = (200,199.7,270,1)
+                    ___atmoMatRadiusParam = ___atmoMat.GetVector("_PlanetRadius");
 
-            //    if (codeMatcher.IsInvalid)
-            //    {
-            //        Instance.Logger.LogError("InternalTickRemote Transpiler Failed");
-            //        return instructions;
-            //    }
+                    float oceanOffset = 199.7f - 200f;
+                    float atmosOffset = 270f - 200f;
+                    ___atmoMatRadiusParam.x = planet.realRadius;
+                    ___atmoMatRadiusParam.y = planet.realRadius + oceanOffset;
+                    ___atmoMatRadiusParam.z = planet.realRadius + atmosOffset;
+                }
+                ___lookCamera = Camera.main.transform;
+                ___universe = GameMain.universeSimulator;
+                ___star = ___universe.FindStarSimulator(planet.star);
 
-            //    instructions = codeMatcher.Repeat(z => z // Repeat for all occurences 
-            //            .Set(OpCodes.Ldc_I4_S, 99)) // Replace operand with 99
-            //        .InstructionEnumeration();
-            //    return instructions;
-            //}
-
-            //[HarmonyTranspiler]
-            //[HarmonyPatch(typeof(StationComponent), "InternalTickRemote")]
-            //public static IEnumerable<CodeInstruction> InternalTickRemoteTranspiler2 (IEnumerable<CodeInstruction> instructions, ILGenerator il)
-            //{
-            //    var codeMatcher = new CodeMatcher(instructions, il).MatchForward(false, new CodeMatch(op => op.opcode == OpCodes.Ldc_R4 && op.OperandIs(2.5f))); // Search for ldc.r4 2.5f
-            //    if (codeMatcher.IsInvalid)
-            //    {
-            //        Instance.Logger.LogError("InternalTickRemote 2nd Transpiler Failed");
-            //        return instructions;
-            //    }
-            //    instructions = codeMatcher.Repeat(z => z // Repeat for all occurences
-            //           .Set(OpCodes.Ldc_R4, 1.0f)) // Replace operand with 1.0f
-            //        .InstructionEnumeration();
-
-            //    return instructions;
-            //}
+                return false;
+            }
         }
     }
 }
