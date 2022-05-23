@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,7 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.9";
+        public const string PLUGIN_VERSION = "0.0.10";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -56,25 +57,23 @@ namespace DSPAddPlanet
 
             Harmony harmony = new Harmony(PLUGIN_GUID);
 
-            // 针对配置文件的补丁
+            // 配置文件载入
             harmony.PatchAll(typeof(Patch_GameData));
 
-            // 针对mod核心业务的补丁
-            harmony.PatchAll(typeof(Patch_StarGen_CreateStarPlanets));
+            // 核心业务功能
+            harmony.PatchAll(typeof(Patch_StarGen));
             harmony.PatchAll(typeof(Patch_PlanetAlgorithms));
 
-            // 其他修修补补
+            // 修正游戏行为
             harmony.PatchAll(typeof(Patch_PlanetModeling));
             harmony.PatchAll(typeof(Patch_TrashSystem));
             harmony.PatchAll(typeof(Patch_PlayerController));
-
-            // 针对mod新增的UI组件的补丁
-            harmony.PatchAll(typeof(Patch_UIGame));
-
-            // 针对运输船逻辑的补丁
             harmony.PatchAll(typeof(Patch_StationComponent));
-
             harmony.PatchAll(typeof(Patch_PlanetSimulator));
+            harmony.PatchAll(typeof(Patch_PlanetGrid));
+
+            // 创建用户界面
+            harmony.PatchAll(typeof(Patch_UIGame));
         }
 
         /// <summary>
@@ -344,71 +343,28 @@ namespace DSPAddPlanet
             );
         }
 
-        class Patch_UIGame
+        /// <summary>
+        /// 游戏数据的存取
+        /// </summary>
+        class Patch_GameData
         {
-            static private bool isCreated = false;
-
-            static private bool isInit = false;
-
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnCreate")]
-            static void UIGame__OnCreate_Postfix ()
+            /// <summary>
+            /// 每次载入存档之前，都重新读取一次配置文件
+            /// </summary>
+            [HarmonyPrefix, HarmonyPatch(typeof(GameData), nameof(GameData.Import))]
+            static void GameData_Import_Prefix ()
             {
-                if (isCreated)
-                {
-                    return;
-                }
-                isCreated = true;
-
-                ResourceCache.InitializeResourceCache();
-
-                Instance.CreateUI();
-            }
-
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnFree")]
-            static void UIGame__OnFree_Postfix ()
-            {
-                Instance.uiAddPlanet._Free();
-            }
-
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnUpdate")]
-            static void UIGame__OnUpdate_Postfix ()
-            {
-                if (GameMain.isPaused || !GameMain.isRunning)
-                {
-                    return;
-                }
-                Instance.uiAddPlanet._Update();
-            }
-
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnDestroy")]
-            static void UIGame__OnDestroy_Postfix ()
-            {
-                Instance.uiAddPlanet._Destroy();
-            }
-
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnInit")]
-            static void UIGame__OnInit_Postfix ()
-            {
-                if (isInit)
-                {
-                    return;
-                }
-                isInit = true;
-
-                Instance.uiAddPlanet._Init(Instance.uiAddPlanet.data);
-            }
-
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
-            static void UIGame_ShutAllFunctionWindow_Postfix ()
-            {
-                Instance.uiAddPlanet._Close();
+                Instance.TryReadConfig();
             }
         }
 
-        [HarmonyPatch(typeof(StarGen), nameof(StarGen.CreateStarPlanets))]
-        class Patch_StarGen_CreateStarPlanets
+        /// <summary>
+        /// 创建新行星
+        /// </summary>
+        class Patch_StarGen
         {
-            static void Postfix (GalaxyData galaxy, StarData star, GameDesc gameDesc)
+            [HarmonyPostfix, HarmonyPatch(typeof(StarGen), nameof(StarGen.CreateStarPlanets))]
+            static void StarGen_CreateStarPlanets_Postfix (GalaxyData galaxy, StarData star, GameDesc gameDesc)
             {
                 if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
                 {
@@ -536,6 +492,9 @@ namespace DSPAddPlanet
             }
         }
 
+        /// <summary>
+        /// 矿脉与地形
+        /// </summary>
         class Patch_PlanetAlgorithms
         {
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
@@ -779,10 +738,13 @@ namespace DSPAddPlanet
         }
 
         /// <summary>
-        /// 将对GetModPlane的调用修改为对GetModPlaneInt的调用，新的方法的返回值与行星的实际半径相关
+        /// 行星建模
         /// </summary>
         class Patch_PlanetModeling
         {
+            /// <summary>
+            /// 对行星建模时，建立行星半径与行星 PlanetRawData 之间的关系
+            /// </summary>
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetModelingManager), "ModelingPlanetMain")]
             static bool ModelingPlanetMain (PlanetData planet)
             {
@@ -790,8 +752,10 @@ namespace DSPAddPlanet
                 return true;
             }
 
-            [HarmonyTranspiler]
-            [HarmonyPatch(typeof(PlanetModelingManager), "ModelingPlanetMain")]
+            /// <summary>
+            /// 将对GetModPlane的调用修改为对GetModPlaneInt的调用，新的方法的返回值与行星的实际半径相关
+            /// </summary>
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetModelingManager), "ModelingPlanetMain")]
             static IEnumerable<CodeInstruction> ModelingPlanetMainTranspiler (IEnumerable<CodeInstruction> instructions)
             {
                 var codes = new List<CodeInstruction>(instructions);
@@ -805,8 +769,10 @@ namespace DSPAddPlanet
                 return codes.AsEnumerable();
             }
 
-            [HarmonyTranspiler]
-            [HarmonyPatch(typeof(PlanetData), "UpdateDirtyMesh")]
+            /// <summary>
+            /// 将对GetModPlane的调用修改为对GetModPlaneInt的调用，新的方法的返回值与行星的实际半径相关
+            /// </summary>
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetData), "UpdateDirtyMesh")]
             static IEnumerable<CodeInstruction> UpdateDirtyMeshTranspiler (IEnumerable<CodeInstruction> instructions)
             {
                 var codes = new List<CodeInstruction>(instructions);
@@ -820,8 +786,10 @@ namespace DSPAddPlanet
                 return codes.AsEnumerable();
             }
 
-            [HarmonyTranspiler]
-            [HarmonyPatch(typeof(PlanetRawData), "QueryModifiedHeight")]
+            /// <summary>
+            /// 将对GetModPlane的调用修改为对GetModPlaneInt的调用，新的方法的返回值与行星的实际半径相关
+            /// </summary>
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetRawData), "QueryModifiedHeight")]
             static IEnumerable<CodeInstruction> QueryModifiedHeightTranspiler (IEnumerable<CodeInstruction> instructions)
             {
                 var codes = new List<CodeInstruction>(instructions);
@@ -836,6 +804,9 @@ namespace DSPAddPlanet
             }
         }
 
+        /// <summary>
+        /// 垃圾系统
+        /// </summary>
         class Patch_TrashSystem
         {
             /// <summary>
@@ -860,6 +831,9 @@ namespace DSPAddPlanet
             }
         }
 
+        /// <summary>
+        /// 玩家行为
+        /// </summary>
         class Patch_PlayerController
         {
             /// <summary>
@@ -887,18 +861,9 @@ namespace DSPAddPlanet
             }
         }
 
-        class Patch_GameData
-        {
-            /// <summary>
-            /// 每次载入存档之前，都重新读取一次配置文件
-            /// </summary>
-            [HarmonyPrefix, HarmonyPatch(typeof(GameData), nameof(GameData.Import))]
-            static void GameData_Import_Prefix ()
-            {
-                Instance.TryReadConfig();
-            }
-        }
-
+        /// <summary>
+        /// 物流站点和物流飞船的行为
+        /// </summary>
         class Patch_StationComponent
         {
             /// <summary>
@@ -990,11 +955,14 @@ namespace DSPAddPlanet
         }
 
         /// <summary>
-        /// 修正行星大气的渲染半径，使其与行星半径有关
-        /// TODO: 改成使用 Transpiler
+        /// 行星大气、行星位置的渲染
         /// </summary>
         class Patch_PlanetSimulator
         {
+            /// <summary>
+            /// 修正行星大气的渲染半径，使其与行星半径有关
+            /// TODO: 改成使用 Transpiler
+            /// </summary>
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetSimulator), nameof(PlanetSimulator.SetPlanetData))]
             static bool PlanetSimulator_SetPlanetData_Prefix (
                 PlanetData planet,
@@ -1044,6 +1012,121 @@ namespace DSPAddPlanet
                 ___star = ___universe.FindStarSimulator(planet.star);
 
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 行星网格，似乎偏重于数学计算
+        /// </summary>
+        class Patch_PlanetGrid
+        {
+            /// <summary>
+            /// 修正行星网格中两点间距离的计算（大概是这么一个意思吧）
+            /// TODO：改成使用 Transpiler
+            /// </summary>
+            /// <param name="__instance"></param>
+            /// <param name="posR"></param>
+            /// <param name="posA"></param>
+            /// <param name="posB"></param>
+            /// <param name="__result"></param>
+            /// <returns></returns>
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetGrid), "CalcSegmentsAcross")]
+            [System.Diagnostics.CodeAnalysis.SuppressMessage("Method Declaration", "Harmony003:Harmony non-ref patch parameters modified", Justification = "<挂起>")]
+            static bool PlanetGrid_CalcSegmentsAcross_Prefix (PlanetGrid __instance, Vector3 posR, Vector3 posA, Vector3 posB, ref float __result)
+            {
+                posR.Normalize();
+                posA.Normalize();
+                posB.Normalize();
+                var num = Mathf.Asin(posR.y);
+                var f = num / ((float)Math.PI * 2f) * __instance.segment;
+                var latitudeIndex = Mathf.FloorToInt(Mathf.Max(0f, Mathf.Abs(f) - 0.1f));
+                float num2 = PlanetGrid.DetermineLongitudeSegmentCount(latitudeIndex, __instance.segment);
+                //Replaced the fixed value 0.0048 with 1/segments * 0.96 [based on planet size 200: 1/200 = 0.005; 0.005 * 0.96 = 0.0048
+                //since the value has to become smaller the larger the planet is, the inverse value (1/x) is used in the calculation
+                var num3 = Mathf.Max(1.0f / __instance.segment * 0.96f, Mathf.Cos(num) * (float)Math.PI * 2f / (num2 * 5f));
+                var num4 = (float)Math.PI * 2f / (__instance.segment * 5f);
+                var num5 = Mathf.Asin(posA.y);
+                var num6 = Mathf.Atan2(posA.x, 0f - posA.z);
+                var num7 = Mathf.Asin(posB.y);
+                var num8 = Mathf.Atan2(posB.x, 0f - posB.z);
+                var num9 = Mathf.Abs(Mathf.DeltaAngle(num6 * 57.29578f, num8 * 57.29578f) * ((float)Math.PI / 180f));
+                var num10 = Mathf.Abs(num5 - num7);
+                var num11 = num10 + num9;
+                var num12 = 0f;
+                var num13 = 1f;
+                if (num11 > 0f)
+                {
+                    num12 = num9 / num11;
+                    num13 = num10 / num11;
+                }
+
+                var num14 = num3 * num12 + num4 * num13;
+                __result = (posA - posB).magnitude / num14;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// UI创建与销毁
+        /// </summary>
+        class Patch_UIGame
+        {
+            static private bool isCreated = false;
+
+            static private bool isInit = false;
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnCreate")]
+            static void UIGame__OnCreate_Postfix ()
+            {
+                if (isCreated)
+                {
+                    return;
+                }
+                isCreated = true;
+
+                ResourceCache.InitializeResourceCache();
+
+                Instance.CreateUI();
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnFree")]
+            static void UIGame__OnFree_Postfix ()
+            {
+                Instance.uiAddPlanet._Free();
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnUpdate")]
+            static void UIGame__OnUpdate_Postfix ()
+            {
+                if (GameMain.isPaused || !GameMain.isRunning)
+                {
+                    return;
+                }
+                Instance.uiAddPlanet._Update();
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnDestroy")]
+            static void UIGame__OnDestroy_Postfix ()
+            {
+                Instance.uiAddPlanet._Destroy();
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnInit")]
+            static void UIGame__OnInit_Postfix ()
+            {
+                if (isInit)
+                {
+                    return;
+                }
+                isInit = true;
+
+                Instance.uiAddPlanet._Init(Instance.uiAddPlanet.data);
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
+            static void UIGame_ShutAllFunctionWindow_Postfix ()
+            {
+                Instance.uiAddPlanet._Close();
             }
         }
     }
