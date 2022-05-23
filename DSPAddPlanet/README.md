@@ -164,7 +164,7 @@ Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work un
 
 ### 0.0.9 -> 0.0.10
 
-- Fix 'Too close' problem when plancing inserters at normal distance on planets with large radius
+- Fix 'Too close' problem when plancing inserters at normal distance on planets with large radius (Great thanks to GalacticScale)
 
 ### 0.0.8 -> 0.0.9
 
