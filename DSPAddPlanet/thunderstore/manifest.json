@@ -1,7 +1,7 @@
 {
   "name": "DSPAddPlanet",
   "description": "Add planets to your existing saved game",
-  "version_number": "0.0.8",
+  "version_number": "0.0.9",
   "dependencies": [
     "xiaoye97-BepInEx-5.4.17"
   ],

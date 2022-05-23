@@ -1,6 +1,7 @@
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using DSPAddPlanet.Extensions;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.8";
+        public const string PLUGIN_VERSION = "0.0.9";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -33,6 +34,7 @@ namespace DSPAddPlanet
         public const float DEFAULT_ORBIT_INCLINATION = 0;
         public const float DEFAULT_OBLIQUITY = 0;
         public const bool DEFAULT_DONT_GENERATE_VEIN = true;
+        public const int THEME_NOT_SPECIFIED = int.MinValue;
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
@@ -111,6 +113,7 @@ namespace DSPAddPlanet
                 // orbitInclination：轨道倾角（度）
                 // obliquity：地轴倾角（度）
                 // dontGenerateVein：是否不生成矿脉
+                // theme：行星主题
                 writer.WriteLine("# Add additional planets to your game.");
                 writer.WriteLine("# New planets will be added in the same order as they are written in this file.");
                 writer.WriteLine("# The format of the config value is similar to URL query string (but not the same, the parser used here is extremely simple)");
@@ -134,6 +137,7 @@ namespace DSPAddPlanet
                         .Append("&orbitInclination=ORBIT_INCLINATION")
                         .Append("&obliquity=OBLIQUITY")
                         .Append("&dontGenerateVein=DONT_GENERATE_VEIN")
+                        .Append("&theme=THEME")
                         .ToString()
                 );
 
@@ -160,6 +164,8 @@ namespace DSPAddPlanet
             {
                 string row = rawConfigArray[i].Trim();
 
+                Instance.Logger.LogInfo($"Reading config #{i}: {row}");
+
                 if (row.IsNullOrWhiteSpace() || row.StartsWith("#") || row.StartsWith("(EXAMPLE)"))
                 {
                     continue;
@@ -170,95 +176,114 @@ namespace DSPAddPlanet
                 string uniqueStarId = configMap.GetValueSafe("uniqueStarId");
                 if (string.IsNullOrWhiteSpace(uniqueStarId))
                 {
-                    Instance.Logger.LogError($"Missing 'uniqueStarId', Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogError($"    Missing parameter 'uniqueStarId'");
                     return;
                 }
                 if (!int.TryParse(configMap.GetValueSafe("index"), out int index))
                 {
-                    Instance.Logger.LogError($"Missing 'index', Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogError($"    Missing parameter 'index'");
                     return;
                 }
                 if (!int.TryParse(configMap.GetValueSafe("orbitAround"), out int orbitAround))
                 {
-                    Instance.Logger.LogError($"Missing 'orbitAround', Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogError($"    Missing parameter 'orbitAround'");
                     return;
                 }
                 if (!int.TryParse(configMap.GetValueSafe("orbitIndex"), out int orbitIndex))
                 {
-                    Instance.Logger.LogError($"Missing 'orbitIndex', Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogError($"    Missing parameter 'orbitIndex'");
                     return;
                 }
                 if (!int.TryParse(configMap.GetValueSafe("number"), out int number))
                 {
-                    Instance.Logger.LogError($"Missing 'number', Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogError($"    Missing parameter 'number'");
                     return;
                 }
                 if (!bool.TryParse(configMap.GetValueSafe("gasGiant"), out bool gasGiant))
                 {
-                    Instance.Logger.LogError($"Missing 'gasGiant', Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogError($"    Missing parameter 'gasGiant'");
                     return;
                 }
                 if (!int.TryParse(configMap.GetValueSafe("info_seed"), out int infoSeed))
                 {
-                    Instance.Logger.LogInfo($"Missing 'info_seed', pick default value: {DEFAULT_INFO_SEED}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'info_seed', pick default value: {DEFAULT_INFO_SEED}");
                     infoSeed = DEFAULT_INFO_SEED;
                 }
                 if (!int.TryParse(configMap.GetValueSafe("gen_seed"), out int genSeed))
                 {
-                    Instance.Logger.LogInfo($"Missing 'gen_seed', pick default value: {DEFAULT_GEN_SEED}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'gen_seed', pick default value: {DEFAULT_GEN_SEED}");
                     genSeed = DEFAULT_GEN_SEED;
                 }
                 if (!bool.TryParse(configMap.GetValueSafe("forcePlanetRadius"), out bool forcePlanetRadius))
                 {
-                    Instance.Logger.LogInfo($"Missing 'forcePlanetRadius', pick default value: {DEFAULT_FORCE_PLANET_RADIUS}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'forcePlanetRadius', pick default value: {DEFAULT_FORCE_PLANET_RADIUS}");
                     forcePlanetRadius = DEFAULT_FORCE_PLANET_RADIUS;
                 }
                 if (!float.TryParse(configMap.GetValueSafe("planetRadius"), out float planetRadius))
                 {
-                    Instance.Logger.LogInfo($"Missing 'planetRadius', pick default value: {DEFAULT_PLANET_RADIUS}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'planetRadius', pick default value: {DEFAULT_PLANET_RADIUS}");
                     planetRadius = DEFAULT_PLANET_RADIUS;
                 }
                 if (planetRadius > MAX_PLANET_RADIUS)
                 {
                     if (!forcePlanetRadius)
                     {
-                        Instance.Logger.LogError($"Current max planet radius is {MAX_PLANET_RADIUS}, use 'forcePlanetRadius=true' to override this, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                        Instance.Logger.LogError($"    Current max planet radius is {MAX_PLANET_RADIUS}, use 'forcePlanetRadius=true' to override this");
                         return;
                     }
                     else
                     {
-                        Instance.Logger.LogWarning($"Force planet radius: {planetRadius}");
+                        Instance.Logger.LogWarning($"    Force planet radius: {planetRadius}");
                     }
                 }
                 if (!float.TryParse(configMap.GetValueSafe("orbitalPeriod"), out float orbitalPeriod))
                 {
-                    Instance.Logger.LogInfo($"Missing 'orbitalPeriod', pick default value: {DEFAULT_ORBITAL_PERIOD}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'orbitalPeriod', pick default value: {DEFAULT_ORBITAL_PERIOD}");
                     orbitalPeriod = DEFAULT_ORBITAL_PERIOD;
                 }
                 if (!float.TryParse(configMap.GetValueSafe("rotationPeriod"), out float rotationPeriod))
                 {
-                    Instance.Logger.LogInfo($"Missing 'rotationPeriod', pick default value: {DEFAULT_ROTATION_PERIOD}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'rotationPeriod', pick default value: {DEFAULT_ROTATION_PERIOD}");
                     rotationPeriod = DEFAULT_ROTATION_PERIOD;
                 }
                 if (!bool.TryParse(configMap.GetValueSafe("isTidalLocked"), out bool isTidalLocked))
                 {
-                    Instance.Logger.LogInfo($"Missing 'isTidalLocked', pick default value: {DEFAULT_IS_TIDAL_LOCKED}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'isTidalLocked', pick default value: {DEFAULT_IS_TIDAL_LOCKED}");
                     isTidalLocked = DEFAULT_IS_TIDAL_LOCKED;
                 }
                 if (!float.TryParse(configMap.GetValueSafe("orbitInclination"), out float orbitInclination))
                 {
-                    Instance.Logger.LogInfo($"Missing 'orbitInclination', pick default value: {DEFAULT_ORBIT_INCLINATION}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'orbitInclination', pick default value: {DEFAULT_ORBIT_INCLINATION}");
                     orbitInclination = DEFAULT_ORBIT_INCLINATION;
                 }
                 if (!float.TryParse(configMap.GetValueSafe("obliquity"), out float obliquity))
                 {
-                    Instance.Logger.LogInfo($"Missing 'obliquity', pick default value: {DEFAULT_OBLIQUITY}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'obliquity', pick default value: {DEFAULT_OBLIQUITY}");
                     obliquity = DEFAULT_ORBIT_INCLINATION;
                 }
                 if (!bool.TryParse(configMap.GetValueSafe("dontGenerateVein"), out bool dontGenerateVein))
                 {
-                    Instance.Logger.LogInfo($"Missing 'dontGenerateVein', pick default value: {DEFAULT_DONT_GENERATE_VEIN}, Section: General, Key: AdditionalPlanets, Value#{i}: {row}");
+                    Instance.Logger.LogInfo($"    Missing parameter 'dontGenerateVein', pick default value: {DEFAULT_DONT_GENERATE_VEIN}");
                     dontGenerateVein = DEFAULT_DONT_GENERATE_VEIN;
+                }
+                int theme = THEME_NOT_SPECIFIED;
+                if (configMap.ContainsKey("theme"))
+                {
+                    if (!int.TryParse(configMap.GetValueSafe("theme"), out theme))
+                    {
+                        Instance.Logger.LogError($"    Invalid parameter 'theme', this parameter must be a positive integer");
+                        return;
+                    }
+                    else if (!LDB.themes.Exist(theme))
+                    {
+                        Instance.Logger.LogError($"    Fail to find theme #{theme} in game data");
+                        return;
+                    }
+                    else if (LDB.themes.Select(theme) == null)
+                    {
+                        Instance.Logger.LogError($"    Theme exists but is null, theme id: {theme}");
+                        return;
+                    }
                 }
 
                 AdditionalPlanetConfig config = new AdditionalPlanetConfig();
@@ -276,6 +301,7 @@ namespace DSPAddPlanet
                 config.OrbitInclination = orbitInclination;
                 config.Obliquity = obliquity;
                 config.DontGenerateVein = dontGenerateVein;
+                config.ThemeId = theme;
 
                 if (!additionalPlanets.ContainsKey(uniqueStarId))
                 {
@@ -420,8 +446,6 @@ namespace DSPAddPlanet
                     Instance.Logger.LogInfo($"    {config}");
                     PlanetData planet = PlanetGen.CreatePlanet(galaxy, star, gameDesc.savedThemeIds, config.Index, config.OrbitAround, config.OrbitIndex, config.Number, config.GasGiant, config.InfoSeed, config.GenSeed);
 
-                    Instance.Logger.LogInfo($"    planetAlgo={planet.algoId}");
-
                     // 增大行星半径
                     if (!config.GasGiant)
                     {
@@ -449,6 +473,63 @@ namespace DSPAddPlanet
                     }
                     planet.obliquity = config.Obliquity;
                     planet.runtimeSystemRotation = planet.runtimeOrbitRotation * Quaternion.AngleAxis(planet.obliquity, Vector3.forward);
+
+                    // 行星主题（逻辑源自 PlanetGen.SetPlanetTheme ）
+                    if (config.ThemeId != THEME_NOT_SPECIFIED)
+                    {
+                        ThemeProto theme = LDB.themes.Select(config.ThemeId);
+                        DotNet35Random random = new DotNet35Random(config.InfoSeed);
+                        double rand1 = random.NextDouble();
+                        double rand2 = random.NextDouble();
+                        double rand3 = random.NextDouble();
+                        double rand4 = random.NextDouble();
+                        int themeSeed = random.Next();
+
+                        planet.theme = config.ThemeId;
+                        planet.algoId = 0;
+                        if (theme.Algos != null && theme.Algos.Length != 0)
+                        {
+                            planet.algoId = theme.Algos[(int)(rand2 * (double)theme.Algos.Length) % theme.Algos.Length];
+                            planet.mod_x = (double)theme.ModX.x + rand3 * (double)(theme.ModX.y - theme.ModX.x);
+                            planet.mod_y = (double)theme.ModY.x + rand4 * (double)(theme.ModY.y - theme.ModY.x);
+                        }
+
+                        planet.style = themeSeed % 60;
+                        planet.type = theme.PlanetType;
+                        planet.ionHeight = theme.IonHeight;
+                        planet.windStrength = theme.Wind;
+                        planet.waterHeight = theme.WaterHeight;
+                        planet.waterItemId = theme.WaterItemId;
+                        planet.levelized = theme.UseHeightForBuild;
+                        planet.iceFlag = theme.IceFlag;
+                        if (planet.type == EPlanetType.Gas)
+                        {
+                            int num2 = theme.GasItems.Length;
+                            int num3 = theme.GasSpeeds.Length;
+                            int[] array = new int[num2];
+                            float[] array2 = new float[num3];
+                            float[] array3 = new float[num2];
+                            for (int n = 0; n < num2; n++)
+                            {
+                                array[n] = theme.GasItems[n];
+                            }
+                            double num4 = 0.0;
+                            DotNet35Random dotNet35Random = new DotNet35Random(themeSeed);
+                            for (int num5 = 0; num5 < num3; num5++)
+                            {
+                                float num6 = theme.GasSpeeds[num5];
+                                num6 *= (float)dotNet35Random.NextDouble() * 0.190909147f + 0.9090909f;
+                                array2[num5] = num6 * Mathf.Pow(planet.star.resourceCoef, 0.3f);
+                                ItemProto itemProto = LDB.items.Select(array[num5]);
+                                array3[num5] = itemProto.HeatValue;
+                                num4 += (double)(array3[num5] * array2[num5]);
+                            }
+                            planet.gasItems = array;
+                            planet.gasSpeeds = array2;
+                            planet.gasHeatValues = array3;
+                            planet.gasTotalHeat = num4;
+                        }
+                    }
 
                     star.planets[i++] = planet;
                 }
@@ -818,7 +899,7 @@ namespace DSPAddPlanet
             }
         }
 
-        public class Patch_StationComponent
+        class Patch_StationComponent
         {
             /// <summary>
             /// 1. 根据游戏的机制，一个恒星周围最多允许存在99个行星（编号为恒星ID+1到恒星ID+99），但是游戏原本只考虑了恒星自身以及恒星周围的9个行星，导致存在更多行星时运输船无法正常停靠，
@@ -912,7 +993,7 @@ namespace DSPAddPlanet
         /// 修正行星大气的渲染半径，使其与行星半径有关
         /// TODO: 改成使用 Transpiler
         /// </summary>
-        public class Patch_PlanetSimulator
+        class Patch_PlanetSimulator
         {
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetSimulator), nameof(PlanetSimulator.SetPlanetData))]
             static bool PlanetSimulator_SetPlanetData_Prefix (

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace DSPAddPlanet
+namespace DSPAddPlanet.Extensions
 {
     static class RectTransformExtensions
     {

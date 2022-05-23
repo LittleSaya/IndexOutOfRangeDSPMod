@@ -269,11 +269,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AdditionalPlanetConfig.cs" />
-    <Compile Include="PlanetModelingManagerAccess.cs" />
-    <Compile Include="PlanetRawDataExtension.cs" />
+    <Compile Include="Extensions\PlanetRawDataExtension.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RectTransformExtensions.cs" />
+    <Compile Include="Extensions\RectTransformExtensions.cs" />
     <Compile Include="ResourceCache.cs" />
     <Compile Include="UIAddPlanet.cs" />
     <Compile Include="UIUtility.cs" />

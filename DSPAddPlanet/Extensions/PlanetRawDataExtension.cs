@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DSPAddPlanet
+namespace DSPAddPlanet.Extensions
 {
     public static class PlanetRawDataExtension
     {
@@ -26,7 +26,7 @@ namespace DSPAddPlanet
 
             baseHeight += planetRawData.GetRadius() * 100;
 
-            return (int)(((planetRawData.modData[index >> 1] >> (((index & 1) << 2) + 2)) & 3) * 133 + baseHeight);
+            return (int)((planetRawData.modData[index >> 1] >> ((index & 1) << 2) + 2 & 3) * 133 + baseHeight);
         }
     }
 }

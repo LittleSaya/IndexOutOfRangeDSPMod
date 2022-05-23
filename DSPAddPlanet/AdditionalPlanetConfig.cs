@@ -36,9 +36,11 @@ namespace DSPAddPlanet
 
         public bool DontGenerateVein { get; set; }
 
+        public int ThemeId { get; set; }
+
         override public string ToString ()
         {
-            return $"Index: {Index}, OrbitAround: {OrbitAround}, OrbitIndex: {OrbitIndex}, Number: {Number}, GasGiant: {GasGiant}, InfoSeed: {InfoSeed}, GenSeed: {GenSeed}, Radius: {Radius}, OrbitalPeriod: {OrbitalPeriod}, RotationPeriod: {RotationPeriod}, IsTidalLocked: {IsTidalLocked}, OrbitInclination: {OrbitInclination}, Obliquity: {Obliquity}, DontGenerateVein: {DontGenerateVein}";
+            return $"Index: {Index}, OrbitAround: {OrbitAround}, OrbitIndex: {OrbitIndex}, Number: {Number}, GasGiant: {GasGiant}, InfoSeed: {InfoSeed}, GenSeed: {GenSeed}, Radius: {Radius}, OrbitalPeriod: {OrbitalPeriod}, RotationPeriod: {RotationPeriod}, IsTidalLocked: {IsTidalLocked}, OrbitInclination: {OrbitInclination}, Obliquity: {Obliquity}, DontGenerateVein: {DontGenerateVein}, ThemeId: {ThemeId}";
         }
     }
 }
