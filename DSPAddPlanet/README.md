@@ -90,6 +90,8 @@ forcePlanetRadius (optional): default value is false. if you want to test planet
 
  orbitInclination (optional): default value is 0. planet's orbital inclination
 
+   orbitLongitude (optional): no default value. planet's longitude of (AN), format 'DEGREE,MINUTE', e.g. '30,33'
+
         obliquity (optional): default value is 0. planet's obliquity
 
  dontGenerateVein (optional): default value is true. if you want veins to generated on your new planet, set this option to false
@@ -156,11 +158,18 @@ Careful about the name of your save file when you save your game because new pla
 
 ## Compatibility
 
-### 0.0.1 ~ 0.0.10
+### 0.0.1 ~ 0.0.11
 
 Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
 
 ## Change log
+
+### 0.0.10 -> 0.0.11
+
+- Add 'orbitLongitude' parameter
+
+- Fix some errors about Foundation on planets with 250 radius
+- Fix trash not being affected by gravity on some planets
 
 ### 0.0.9 -> 0.0.10
 

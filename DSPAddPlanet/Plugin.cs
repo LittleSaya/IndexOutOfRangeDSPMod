@@ -21,7 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.10";
+        public const string PLUGIN_VERSION = "0.0.11";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -36,6 +36,7 @@ namespace DSPAddPlanet
         public const float DEFAULT_OBLIQUITY = 0;
         public const bool DEFAULT_DONT_GENERATE_VEIN = true;
         public const int THEME_NOT_SPECIFIED = int.MinValue;
+        public const float ORBIT_LONGITUDE_NOT_SPECIFIED = float.MinValue;
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
@@ -55,6 +56,10 @@ namespace DSPAddPlanet
         {
             instance = this;
 
+            ILUtility.Initialize(Logger);
+
+            PlatformSystem.segmentTable = Global.fixedPlatformSystemSegmentTable;
+
             Harmony harmony = new Harmony(PLUGIN_GUID);
 
             // 配置文件载入
@@ -71,9 +76,12 @@ namespace DSPAddPlanet
             harmony.PatchAll(typeof(Patch_StationComponent));
             harmony.PatchAll(typeof(Patch_PlanetSimulator));
             harmony.PatchAll(typeof(Patch_PlanetGrid));
+            harmony.PatchAll(typeof(Patch_PlatformSystem));
 
             // 创建用户界面
             harmony.PatchAll(typeof(Patch_UIGame));
+
+            harmony.PatchAll(typeof(Patch_Debug));
         }
 
         /// <summary>
@@ -110,6 +118,7 @@ namespace DSPAddPlanet
                 // rotationPeriod：自转周期（秒）
                 // isTidalLocked：是否潮汐锁定
                 // orbitInclination：轨道倾角（度）
+                // orbitLongitude：升交点经度（度,分）
                 // obliquity：地轴倾角（度）
                 // dontGenerateVein：是否不生成矿脉
                 // theme：行星主题
@@ -134,6 +143,7 @@ namespace DSPAddPlanet
                         .Append("&rotationPeriod=ROTATION_PERIOD")
                         .Append("&isTidalLocked=IS_TIDAL_LOCKED")
                         .Append("&orbitInclination=ORBIT_INCLINATION")
+                        .Append("&orbitLongitude=ORBIT_LONGITUDE")
                         .Append("&obliquity=OBLIQUITY")
                         .Append("&dontGenerateVein=DONT_GENERATE_VEIN")
                         .Append("&theme=THEME")
@@ -255,6 +265,48 @@ namespace DSPAddPlanet
                     Instance.Logger.LogInfo($"    Missing parameter 'orbitInclination', pick default value: {DEFAULT_ORBIT_INCLINATION}");
                     orbitInclination = DEFAULT_ORBIT_INCLINATION;
                 }
+
+                float orbitLongitude = ORBIT_LONGITUDE_NOT_SPECIFIED;
+                if (configMap.ContainsKey("orbitLongitude"))
+                {
+                    string orbitLongitudeString = configMap["orbitLongitude"];
+                    if (string.IsNullOrWhiteSpace(orbitLongitudeString))
+                    {
+                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
+                        return;
+                    }
+
+                    string[] orbitLongitudeStrings = orbitLongitudeString.Split(',');
+                    if (orbitLongitudeStrings.Length != 2)
+                    {
+                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
+                        return;
+                    }
+
+                    if (!float.TryParse(orbitLongitudeStrings[0].Trim(), out float orbitLongitudeDegree))
+                    {
+                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
+                        return;
+                    }
+
+                    if (!float.TryParse(orbitLongitudeStrings[1].Trim(), out float orbitLongitudeMinute))
+                    {
+                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
+                        return;
+                    }
+
+                    orbitLongitude = orbitLongitudeDegree + orbitLongitudeMinute / 60f;
+                    if (orbitLongitude >= 360f)
+                    {
+                        orbitLongitude = Mathf.Repeat(orbitLongitude, 360f);
+                    }
+                    else if (orbitLongitude < 0f)
+                    {
+                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' must be positive");
+                        return;
+                    }
+                }
+
                 if (!float.TryParse(configMap.GetValueSafe("obliquity"), out float obliquity))
                 {
                     Instance.Logger.LogInfo($"    Missing parameter 'obliquity', pick default value: {DEFAULT_OBLIQUITY}");
@@ -301,6 +353,7 @@ namespace DSPAddPlanet
                 config.Obliquity = obliquity;
                 config.DontGenerateVein = dontGenerateVein;
                 config.ThemeId = theme;
+                config.OrbitLongitude = orbitLongitude;
 
                 if (!additionalPlanets.ContainsKey(uniqueStarId))
                 {
@@ -428,6 +481,22 @@ namespace DSPAddPlanet
                         planet.runtimeOrbitRotation = planet.orbitAroundPlanet.runtimeOrbitRotation * planet.runtimeOrbitRotation;
                     }
                     planet.obliquity = config.Obliquity;
+                    planet.runtimeSystemRotation = planet.runtimeOrbitRotation * Quaternion.AngleAxis(planet.obliquity, Vector3.forward);
+
+                    // 升交点经度
+                    if (planet.orbitInclination >= 0)
+                    {
+                        planet.orbitLongitude = 180f - config.OrbitLongitude;
+                    }
+                    else
+                    {
+                        planet.orbitLongitude = -config.OrbitLongitude;
+                    }
+                    planet.runtimeOrbitRotation = Quaternion.AngleAxis(planet.orbitLongitude, Vector3.up) * Quaternion.AngleAxis(planet.orbitInclination, Vector3.forward);
+                    if (planet.orbitAroundPlanet != null)
+                    {
+                        planet.runtimeOrbitRotation = planet.orbitAroundPlanet.runtimeOrbitRotation * planet.runtimeOrbitRotation;
+                    }
                     planet.runtimeSystemRotation = planet.runtimeOrbitRotation * Quaternion.AngleAxis(planet.obliquity, Vector3.forward);
 
                     // 行星主题（逻辑源自 PlanetGen.SetPlanetTheme ）
@@ -810,7 +879,7 @@ namespace DSPAddPlanet
         class Patch_TrashSystem
         {
             /// <summary>
-            /// 某种情况下高度大于600的垃圾会直接消失，这里把这个限制改成800
+            /// 修正垃圾受重力影响的逻辑
             /// </summary>
             /// <param name="instructions"></param>
             /// <returns></returns>
@@ -820,12 +889,37 @@ namespace DSPAddPlanet
             {
                 CodeMatcher matcher = new CodeMatcher(instructions);
 
+                // 某种情况下高度大于600的垃圾会直接消失，这里把这个限制改成800
                 matcher.MatchForward(
                     true,
                     new CodeMatch(OpCodes.Ldc_R8, 600.0)
                 );
 
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("无法找到数字 600.0");
+                    return instructions;
+                }
+
                 matcher.Set(OpCodes.Ldc_R8, 800.0);
+
+                // 寻找一段形如 A <= B + 8 的代码，然后将 +8 改为 +99
+                matcher.MatchForward(false,
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldloc_S && ((LocalBuilder)instruction.operand).LocalIndex == 6),
+                    new CodeMatch(OpCodes.Ldloc_1),
+                    new CodeMatch(OpCodes.Ldc_I4_8),
+                    new CodeMatch(OpCodes.Add),
+                    new CodeMatch(OpCodes.Ble)
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("无法找到第形如 A <= B + 8 的代码");
+                    return instructions;
+                }
+
+                matcher.Advance(2);
+                matcher.Set(OpCodes.Ldc_I4_S, 99);
 
                 return matcher.InstructionEnumeration();
             }
@@ -1128,6 +1222,118 @@ namespace DSPAddPlanet
             {
                 Instance.uiAddPlanet._Close();
             }
+        }
+
+        /// <summary>
+        /// 确保读档时 PlatformSystem 的 maxReformCount 和 reformData.Length 相等
+        /// </summary>
+        class Patch_PlatformSystem
+        {
+            [HarmonyPostfix, HarmonyPatch(typeof(PlatformSystem), nameof(PlatformSystem.Import))]
+            static void PlatformSystem_Import_Postfix (PlatformSystem __instance)
+            {
+                if (__instance.reformData != null && __instance.maxReformCount > __instance.reformData.Length)
+                {
+                    Array.Resize(ref __instance.reformData, __instance.maxReformCount);
+                }
+            }
+        }
+
+        class Patch_Debug
+        {
+            //[HarmonyTranspiler, HarmonyPatch(typeof(PlanetGrid), nameof(PlanetGrid.ReformSnapTo))]
+            //static IEnumerable<CodeInstruction> PlanetGrid_ReformSnapTo_Transpiler (IEnumerable<CodeInstruction> instructions)
+            //{
+            //    CodeMatcher matcher = new CodeMatcher(instructions);
+
+            //    matcher.Start();
+
+            //    ILUtility.PrintInt(matcher, ILUtility.VariableType.Argument, 0, typeof(PlanetGrid).GetField(nameof(PlanetGrid.segment)), "segment");
+
+            //    ILUtility.PrintVector3(matcher, ILUtility.VariableType.Argument, 1, "pos");
+            //    matcher.Advance(2);
+            //    ILUtility.PrintVector3(matcher, ILUtility.VariableType.Argument, 1, "pos normalized");
+
+            //    matcher.MatchForward(true, new CodeMatch(instruction => instruction.opcode == OpCodes.Stloc_S && ((LocalBuilder)instruction.operand).LocalIndex == 21));
+            //    matcher.Advance(-3);
+
+            //    //matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Ldstr, "num3"));
+            //    //matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Ldloc_S, 1));
+            //    //matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Call, typeof(ILUtility).GetMethod("", BindingFlags.NonPublic | BindingFlags.Static)));
+
+            //    ILUtility.PrintFloat(matcher, ILUtility.VariableType.Local, 1, "_latitudeSeg");
+            //    ILUtility.PrintFloat(matcher, ILUtility.VariableType.Local, 5, "_longitudeSeg");
+
+            //    return matcher.InstructionEnumeration();
+            //}
+
+            //[HarmonyTranspiler, HarmonyPatch(typeof(UIBuildingGrid), "Update")]
+            //static IEnumerable<CodeInstruction> UIBuildingGrid_Update_Transpiler (IEnumerable<CodeInstruction> instructions)
+            //{
+            //    CodeMatcher matcher = new CodeMatcher(instructions);
+
+            //    matcher.MatchForward(true, new CodeMatch(OpCodes.Ldstr, "_CursorGratBox"));
+            //    matcher.Advance(5);
+            //    ILUtility.PrintIntArray(matcher, ILUtility.VariableType.Local, 17, "cursorIndices");
+
+            //    return matcher.InstructionEnumeration();
+            //}
+
+            //[HarmonyTranspiler, HarmonyPatch(typeof(PlatformSystem), nameof(PlatformSystem.GetReformType))]
+            //static IEnumerable<CodeInstruction> PlatformSystem_GetReformType_Transpiler (IEnumerable<CodeInstruction> instructions)
+            //{
+            //    CodeMatcher matcher = new CodeMatcher(instructions);
+
+            //    matcher.Start();
+
+            //    ILUtility.PrintByteArrayLength(matcher, ILUtility.VariableType.Argument, 0, typeof(PlatformSystem).GetField(nameof(PlatformSystem.reformData)), "reformData.Length");
+            //    ILUtility.PrintInt(matcher, ILUtility.VariableType.Argument, 1, "index");
+
+            //    return matcher.InstructionEnumeration();
+            //}
+
+            //static bool flag1 = true;
+
+            //[HarmonyPostfix, HarmonyPatch(typeof(UIBuildingGrid), "Update")]
+            //static void UIBuildingGrid_Update_Postfix (Material ___material)
+            //{
+            //    if (flag1)
+            //    {
+            //        Texture2D tex2d = (Texture2D)___material.GetTexture("_SegmentTable");
+            //        StringBuilder str = new StringBuilder();
+            //        for (int i = 0; i < 512; ++i)
+            //        {
+            //            Color color = tex2d.GetPixel(i, 0);
+            //            str.Append($"\r\n{i,+3}: ({color.r * 255,+3}, {color.g * 255,+3}, {color.b * 255,+3}, {color.a * 255,+3})");
+            //        }
+            //        Instance.Logger.LogInfo("_SegmentTable:" + str);
+            //        flag1 = false;
+            //    }
+            //}
+
+            //[HarmonyPostfix, HarmonyPatch(typeof(PerformanceMonitor), "BeginData")]
+            //static void PerformanceMonitor_BeginData_Postfix (ESaveDataEntry entry)
+            //{
+            //    Instance.Logger.LogInfo($"    PerformanceMonitor_BeginData_Postfix: {entry}");
+            //}
+
+            //[HarmonyTranspiler, HarmonyPatch(typeof(PlanetFactory), "Import")]
+            //static IEnumerable<CodeInstruction> PlanetFactory_Import_Transpiler (IEnumerable<CodeInstruction> instructions)
+            //{
+            //    CodeMatcher matcher = new CodeMatcher(instructions);
+
+            //    matcher.MatchForward(true, new CodeMatch(OpCodes.Stloc_3));
+            //    matcher.Advance(1);
+            //    ILUtility.PrintInt(matcher, ILUtility.VariableType.Local, 3, "import planet id");
+
+            //    return matcher.InstructionEnumeration();
+            //}
+
+            //[HarmonyPrefix, HarmonyPatch(typeof(PlanetFactory), "Export")]
+            //static void PlanetFactory_Export_Prefix (PlanetFactory __instance)
+            //{
+            //    Instance.Logger.LogInfo("export planet id: " + __instance.planetId);
+            //}
         }
     }
 }

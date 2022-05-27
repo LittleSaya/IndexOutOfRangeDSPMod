@@ -81,6 +81,8 @@ forcePlanetRadius (可选): 默认值为false，如果您想测试半径大于60
 
  orbitInclination (可选): 默认值为0，轨道倾角
 
+   orbitLongitude (可选)：无默认值，轨道升交点经度
+
         obliquity (可选): 默认值为0，地轴倾角
 
  dontGenerateVein (可选): 默认值为true，是否**不**生成矿脉
@@ -147,11 +149,18 @@ uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&nu
 
 ## 兼容性
 
-### 0.0.1 ~ 0.0.10
+### 0.0.1 ~ 0.0.11
 
 Build target ：游戏版本 0.9.25.12201 ， BepInEx 版本： 5.4.19 （应该也能够在 5.4.17 版本下正常运行）
 
 ## 更新日志
+
+### 0.0.10 -> 0.0.11
+
+- 添加了“orbitLongitude”参数
+
+- 修正了在半径250的行星上摆放地基时出现的一些错误
+- 修正了垃圾在某些行星上不受重力影响的问题
 
 ### 0.0.9 -> 0.0.10
 
