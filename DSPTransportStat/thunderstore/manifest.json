@@ -1,9 +1,9 @@
 {
   "name": "DSPTransportStat",
-  "description": "DSP Transport Stat",
+  "description": "Manage transport stations in every corner of your galaxy",
   "version_number": "0.0.11",
   "dependencies": [
     "xiaoye97-BepInEx-5.4.17"
   ],
-  "website_url": "https://github.com/LittleSaya/DSPTransportStat"
+  "website_url": "https://github.com/LittleSaya/IndexOutOfRangeDSPMod/tree/master/DSPTransportStat"
 }

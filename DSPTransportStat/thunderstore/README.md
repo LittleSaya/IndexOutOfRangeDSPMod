@@ -1,3 +1,7 @@
+For other languages of this README, please refer to
+
+[中文说明](https://github.com/LittleSaya/IndexOutOfRangeDSPMod/blob/master/DSPTransportStat/README-zh-Hans.md "中文说明")
+
 # DSP Transport Stat
 
 Press *Ctrl+F* to open/close transport stations window.
@@ -11,7 +15,7 @@ Great thanks to authors of LSTM and Unity Explorer.
 - Filtering though station type, location, name and items.
 - Sorting by station location and name, ascending or descending.
 
-![Usage](https://raw.githubusercontent.com/LittleSaya/DSPTransportStat/master/Doc/brief.jpg "Usage")
+![Usage](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPTransportStat/Doc/brief.jpg "Usage")
 
 ## Compatibility
 

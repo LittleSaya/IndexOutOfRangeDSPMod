@@ -11,7 +11,7 @@
 - 通过站点类型、位置、名称和物品对站点进行过滤
 - 通过站点的位置和名称对站点进行升序、降序排序
 
-![Usage](https://raw.githubusercontent.com/LittleSaya/DSPTransportStat/master/Doc/brief.jpg "Usage")
+![Usage](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPTransportStat/Doc/brief-zh-Hans.jpg "Usage")
 
 ## 兼容性
 
