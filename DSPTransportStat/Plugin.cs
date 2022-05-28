@@ -19,7 +19,7 @@ namespace DSPTransportStat
     {
         public const string __NAME__ = "DSPTransportStat";
         public const string __GUID__ = "IndexOutOfRange.DSPTransportStat";
-        public const string __VERSION__ = "0.0.11";
+        public const string __VERSION__ = "0.0.12";
 
         static public Plugin Instance { get; set; } = null;
 
@@ -132,7 +132,7 @@ namespace DSPTransportStat
         }
 
         /// <summary>
-        /// 退出游戏时保存配置
+        /// 退出游戏时保存配置，如果窗口没有关闭的话，关闭窗口
         /// </summary>
         class Patch_GameMain
         {
@@ -140,6 +140,10 @@ namespace DSPTransportStat
             static void GameMain_End_Postfix ()
             {
                 Instance.SaveConfig();
+                if (Instance.uiTransportStationsWindow.active)
+                {
+                    Instance.uiTransportStationsWindow._Close();
+                }
             }
         }
 

@@ -19,7 +19,7 @@ Great thanks to authors of LSTM and Unity Explorer.
 
 ## Compatibility
 
-### 0.0.8 ~ 0.0.11
+### 0.0.8 ~ 0.0.12
 
 Game Version: Early Access 0.9.25.12201, BepInEx: 5.4.19
 
@@ -36,6 +36,10 @@ Game Version: Early Access 0.9.25.12077, BepInEx: 5.4.19
 Ideas are welcome :-)
 
 ## Change log
+
+### 0.0.11 -> 0.0.12
+
+- Fix NPE after quiting the game without closing the station list window
 
 ### 0.0.10 -> 0.0.11
 
