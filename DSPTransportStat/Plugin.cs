@@ -19,7 +19,7 @@ namespace DSPTransportStat
     {
         public const string __NAME__ = "DSPTransportStat";
         public const string __GUID__ = "IndexOutOfRange.DSPTransportStat";
-        public const string __VERSION__ = "0.0.12";
+        public const string __VERSION__ = "0.0.13";
 
         static public Plugin Instance { get; set; } = null;
 
@@ -186,6 +186,13 @@ namespace DSPTransportStat
                     return;
                 }
                 Instance.uiTransportStationsWindow._Update();
+
+                // 对 esc 键做出反应
+                if (Instance.uiTransportStationsWindow.active && VFInput.escape)
+                {
+                    VFInput.UseEscape();
+                    Instance.uiTransportStationsWindow._Close();
+                }
             }
 
             //[HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnDestroy")]
@@ -205,7 +212,7 @@ namespace DSPTransportStat
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
-            public static void UIGame_ShutAllFunctionWindow_Postfix ()
+            static void UIGame_ShutAllFunctionWindow_Postfix ()
             {
                 Instance.uiTransportStationsWindow._Close();
             }
@@ -234,7 +241,10 @@ namespace DSPTransportStat
 
         public class Patch_UIStationWindow
         {
-            static public bool isOpenedFromPlugin = false;
+            static public bool IsOpenedFromPlugin
+            {
+                get => currentStationWindow != null;
+            }
 
             static private UIStationWindow currentStationWindow = null;
 
@@ -273,18 +283,41 @@ namespace DSPTransportStat
 
                         if (win.active)
                         {
-                            win.nameInput.onValueChanged.AddListener((s) => typeof(UIStationWindow).GetMethod("OnNameInputSubmit").Invoke(win, new object[1] { s }));
-                            win.nameInput.onEndEdit.AddListener((s) => typeof(UIStationWindow).GetMethod("OnNameInputSubmit").Invoke(win, new object[1] { s }));
+                            win.nameInput.onValueChanged.AddListener(s => typeof(UIStationWindow).GetMethod("OnNameInputSubmit", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(win, new object[1] { s }));
+                            win.nameInput.onEndEdit.AddListener(s => typeof(UIStationWindow).GetMethod("OnNameInputSubmit", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(win, new object[1] { s }));
                             currentStationWindow = win;
                             win.player.onIntendToTransferItems += OnPlayerIntendToTransferItems;
-                            isOpenedFromPlugin = true;
                         }
                         win.transform.SetAsLastSibling();
+
+                        // 设置 UIGame 的 inspectStationId ，使之与手动打开的情况保持一致
+                        typeof(UIGame).GetField("inspectStationId", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(UIRoot.instance.uiGame, stationId);
                     }
                     catch (Exception message)
                     {
                         Instance.Logger.LogError(message);
                     }
+                }
+            }
+
+            /// <summary>
+            /// 远程打开其他行星上的物流塔时，会将 factory, transport, powerSystem 和 factorySystem 替换成其他行星上的值
+            /// 调用 OnStationIdChange 之前需要将它们重新赋予本地行星的值
+            /// </summary>
+            /// <param name="__instance"></param>
+            [HarmonyPrefix, HarmonyPatch(typeof(UIStationWindow), "OnStationIdChange")]
+            static void UIStationWindow_OnStationIdChange_Prefix (UIStationWindow __instance)
+            {
+                if (IsOpenedFromPlugin)
+                {
+                    PlanetFactory factory = GameMain.localPlanet.factory;
+                    __instance.factory = factory;
+                    __instance.transport = factory.transport;
+                    __instance.powerSystem = factory.powerSystem;
+                    __instance.factorySystem = factory.factorySystem;
+
+                    // 通过 OnStationIdChange 打开物流塔，等于把从 mod 中远程打开的物流塔界面关闭
+                    currentStationWindow = null;
                 }
             }
 
@@ -294,7 +327,7 @@ namespace DSPTransportStat
                 if (currentStationWindow != null && currentStationWindow.player != null)
                 {
                     currentStationWindow.player.onIntendToTransferItems -= OnPlayerIntendToTransferItems;
-                    isOpenedFromPlugin = false;
+                    currentStationWindow = null;
                 }
             }
 
@@ -310,13 +343,13 @@ namespace DSPTransportStat
             [HarmonyPrefix, HarmonyPatch(typeof(UIStationStorage), nameof(UIStationStorage.OnItemIconMouseDown))]
             static bool UIStationStorage_OnItemIconMouseDown_Prefix ()
             {
-                return Instance.isAllowItemTransfer || !Patch_UIStationWindow.isOpenedFromPlugin;
+                return Instance.isAllowItemTransfer || !Patch_UIStationWindow.IsOpenedFromPlugin;
             }
 
             [HarmonyPrefix, HarmonyPatch(typeof(UIStationStorage), nameof(UIStationStorage.OnIconEnter))]
             static bool UIStationStorage_OnIconEnter_Prefix ()
             {
-                return Instance.isAllowItemTransfer || !Patch_UIStationWindow.isOpenedFromPlugin;
+                return Instance.isAllowItemTransfer || !Patch_UIStationWindow.IsOpenedFromPlugin;
             }
         }
     }
