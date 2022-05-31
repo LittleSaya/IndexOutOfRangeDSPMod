@@ -21,7 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.11";
+        public const string PLUGIN_VERSION = "0.0.12";
 
         public const float MAX_PLANET_RADIUS = 600;
 
@@ -77,6 +77,7 @@ namespace DSPAddPlanet
             harmony.PatchAll(typeof(Patch_PlanetSimulator));
             harmony.PatchAll(typeof(Patch_PlanetGrid));
             harmony.PatchAll(typeof(Patch_PlatformSystem));
+            harmony.PatchAll(typeof(Patch_BuildTool_BlueprintPaste));
 
             // 创建用户界面
             harmony.PatchAll(typeof(Patch_UIGame));
@@ -1236,6 +1237,41 @@ namespace DSPAddPlanet
                 {
                     Array.Resize(ref __instance.reformData, __instance.maxReformCount);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 修正蓝图在不同于200半径的行星上的行为
+        /// </summary>
+        class Patch_BuildTool_BlueprintPaste
+        {
+            [HarmonyTranspiler, HarmonyPatch(typeof(BuildTool_BlueprintPaste), nameof(BuildTool_BlueprintPaste.CheckBuildConditions))]
+            static IEnumerable<CodeInstruction> BuildTool_BlueprintPaste_CheckBuildConditions_Transpiler (IEnumerable<CodeInstruction> instructions)
+            {
+                CodeMatcher matcher = new CodeMatcher(instructions);
+
+                // 找到形如 A = ? - 200.2f 的代码
+                matcher.MatchForward(
+                    false,
+                    new CodeMatch(OpCodes.Ldc_R4, 200.2f),
+                    new CodeMatch(OpCodes.Sub),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Stloc_S)
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("BuildTool_BlueprintPaste_CheckBuildConditions_Transpiler ：无法找到形如 A = ? - 200.2f 的代码");
+                    return instructions;
+                }
+
+                matcher.Set(OpCodes.Call, typeof(Patch_BuildTool_BlueprintPaste).GetMethod("GetLocalPlanetRadius", BindingFlags.NonPublic | BindingFlags.Static));
+
+                return matcher.InstructionEnumeration();
+            }
+
+            static float GetLocalPlanetRadius ()
+            {
+                return GameMain.localPlanet.realRadius;
             }
         }
 

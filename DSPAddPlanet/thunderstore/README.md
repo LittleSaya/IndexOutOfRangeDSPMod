@@ -158,11 +158,16 @@ Careful about the name of your save file when you save your game because new pla
 
 ## Compatibility
 
-### 0.0.1 ~ 0.0.11
+### 0.0.1 ~ 0.0.12
 
 Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
 
 ## Change log
+
+### 0.0.11 -> 0.0.12
+
+- Fix some errors about Foundation on planets with 125 radius
+- Fix 'Out of vertical construction height' error when pasting blueprint on planet with radius larger than 200
 
 ### 0.0.10 -> 0.0.11
 
