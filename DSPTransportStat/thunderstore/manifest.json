@@ -1,7 +1,7 @@
 {
   "name": "DSPTransportStat",
   "description": "Manage transport stations in every corner of your galaxy",
-  "version_number": "0.0.13",
+  "version_number": "0.0.14",
   "dependencies": [
     "xiaoye97-BepInEx-5.4.17"
   ],

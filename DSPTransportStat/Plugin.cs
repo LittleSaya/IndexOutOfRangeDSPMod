@@ -19,7 +19,7 @@ namespace DSPTransportStat
     {
         public const string __NAME__ = "DSPTransportStat";
         public const string __GUID__ = "IndexOutOfRange.DSPTransportStat";
-        public const string __VERSION__ = "0.0.13";
+        public const string __VERSION__ = "0.0.14";
 
         static public Plugin Instance { get; set; } = null;
 
@@ -329,10 +329,21 @@ namespace DSPTransportStat
                     currentStationWindow.player.onIntendToTransferItems -= OnPlayerIntendToTransferItems;
                     currentStationWindow = null;
                 }
+
+                if (currentStationWindow != null && currentStationWindow.player == null)
+                {
+                    Instance.Logger.LogWarning("UIStationWindow._OnClose(): currentStationWindow != null && currentStationWindow.player == null");
+                }
             }
 
             static private void OnPlayerIntendToTransferItems (int _itemId, int _itemCount, int _itemInc)
             {
+                // 避免抛出异常
+                if (currentStationWindow == null)
+                {
+                    return;
+                }
+
                 MethodInfo method = typeof(UIStationWindow).GetMethod("OnPlayerIntendToTransferItems", BindingFlags.NonPublic | BindingFlags.Instance);
                 method.Invoke(currentStationWindow, new object[3] { _itemId, _itemCount, _itemInc });
             }
