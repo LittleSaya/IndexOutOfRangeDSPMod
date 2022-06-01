@@ -505,6 +505,8 @@ namespace DSPTransportStat
             bool toggleInterstellar = uiTSWParameterPanel.ToggleInterstellar;
             bool toggleCollector = uiTSWParameterPanel.ToggleCollector;
             int relatedItemFilter = uiTSWParameterPanel.RelatedItemFilter;
+            StorageUsageTypeFilter storageUsageType = uiTSWParameterPanel.StorageUsageTypeFilter;
+            StorageUsageDirectionFilter storageUsageDirection = uiTSWParameterPanel.StorageUsageDirectionFilter;
 
             stations.Clear();
 
@@ -566,6 +568,59 @@ namespace DSPTransportStat
                             {
                                 if (station.storage[ii].itemId == relatedItemFilter)
                                 {
+                                    StationStore ss = station.storage[ii];
+                                    // 对 usage type 和 usage direction 进行过滤
+                                    if (storageUsageDirection == StorageUsageDirectionFilter.Supply)
+                                    {
+                                        // usage direction 为 supply
+                                        if (storageUsageType == StorageUsageTypeFilter.All && ss.localLogic != ELogisticStorage.Supply && ss.remoteLogic != ELogisticStorage.Supply)
+                                        {
+                                            // usage type 为 all 但是 local logic 和 remote logic 都不为 supply
+                                            continue;
+                                        }
+                                        if (storageUsageType == StorageUsageTypeFilter.Local && ss.localLogic != ELogisticStorage.Supply)
+                                        {
+                                            // usage type 为 local 但是 local logic 不为 supply
+                                            continue;
+                                        }
+                                        if (storageUsageType == StorageUsageTypeFilter.Remote && ss.remoteLogic != ELogisticStorage.Supply)
+                                        {
+                                            // usage type 为 remote 但是 remote logic 不为 supply
+                                            continue;
+                                        }
+                                    }
+                                    else if (storageUsageDirection == StorageUsageDirectionFilter.Demand)
+                                    {
+                                        // usage direction 为 demand
+                                        if (storageUsageType == StorageUsageTypeFilter.All && ss.localLogic != ELogisticStorage.Demand && ss.remoteLogic != ELogisticStorage.Demand)
+                                        {
+                                            continue;
+                                        }
+                                        if (storageUsageType == StorageUsageTypeFilter.Local && ss.localLogic != ELogisticStorage.Demand)
+                                        {
+                                            continue;
+                                        }
+                                        if (storageUsageType == StorageUsageTypeFilter.Remote && ss.remoteLogic != ELogisticStorage.Demand)
+                                        {
+                                            continue;
+                                        }
+                                    }
+                                    else if (storageUsageDirection == StorageUsageDirectionFilter.Storage)
+                                    {
+                                        // usage direction 为 storage
+                                        if (storageUsageType == StorageUsageTypeFilter.All && ss.localLogic != ELogisticStorage.None && ss.remoteLogic != ELogisticStorage.None)
+                                        {
+                                            continue;
+                                        }
+                                        if (storageUsageType == StorageUsageTypeFilter.Local && ss.localLogic != ELogisticStorage.None)
+                                        {
+                                            continue;
+                                        }
+                                        if (storageUsageType == StorageUsageTypeFilter.Remote && ss.remoteLogic != ELogisticStorage.None)
+                                        {
+                                            continue;
+                                        }
+                                    }
                                     break;
                                 }
                             }
@@ -730,10 +785,6 @@ namespace DSPTransportStat
         private void Update ()
         {
             ComputeTransportStationsWindow_VirtualScroll();
-            //for (int i = 0; i < uiTransportStationsEntries.Length; ++i)
-            //{
-            //    uiTransportStationsEntries[i].Update();
-            //}
         }
 
         public void OnPointerEnter (PointerEventData eventData)

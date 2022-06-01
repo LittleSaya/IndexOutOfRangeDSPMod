@@ -272,6 +272,8 @@
     <Compile Include="CacheObjects\ReassembledObjectCache.cs" />
     <Compile Include="CacheObjects\ResourceCache.cs" />
     <Compile Include="Enum\SortOrder.cs" />
+    <Compile Include="Enum\StorageUsageDirectionFilter.cs" />
+    <Compile Include="Enum\StorageUsageTypeFilter.cs" />
     <Compile Include="Extensions\RectTransformExtensions.cs" />
     <Compile Include="Extensions\StationComponentExtensions.cs" />
     <Compile Include="Extensions\StationStoreExtensions.cs" />

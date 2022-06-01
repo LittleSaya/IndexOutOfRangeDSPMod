@@ -12,14 +12,14 @@ Great thanks to authors of LSTM and Unity Explorer.
 
 - Listing all transport stations in every corner of your galaxy. Showing the location, state and storage of stations.
 - Open the Station Window remotely and directly in a list without the need to stand near the station or land on the station's planet.
-- Filtering though station type, location, name and items.
+- Filtering though station type, location, name, items and logistic logic (takes effect when item filter is not empty).
 - Sorting by station location and name, ascending or descending.
 
 ![Usage](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPTransportStat/Doc/brief.jpg "Usage")
 
 ## Compatibility
 
-### 0.0.8 ~ 0.0.14
+### 0.0.8 ~ 0.0.15
 
 Game Version: Early Access 0.9.25.12201, BepInEx: 5.4.19
 
@@ -36,6 +36,10 @@ Game Version: Early Access 0.9.25.12077, BepInEx: 5.4.19
 Ideas are welcome :-)
 
 ## Change log
+
+### 0.0.14 -> 0.0.15
+
+- Add logistic logic filter
 
 ### 0.0.13 -> 0.0.14
 

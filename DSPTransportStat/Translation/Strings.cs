@@ -228,6 +228,123 @@ namespace DSPTransportStat.Translation
                         }
                     }
                 }
+
+                static public string UsageTypeFilterLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Local/Remote";
+                            case Language.zhCN: return "行星/星际";
+                            default: return "Local/Remote";
+                        }
+                    }
+                }
+
+                static public string UsageTypeFilterToggleAllLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "All";
+                            case Language.zhCN: return "全部";
+                            default: return "All";
+                        }
+                    }
+                }
+
+                static public string UsageTypeFilterToggleLocalLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Local";
+                            case Language.zhCN: return "行星";
+                            default: return "Local";
+                        }
+                    }
+                }
+
+                static public string UsageTypeFilterToggleRemoteLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Remote";
+                            case Language.zhCN: return "星际";
+                            default: return "Remote";
+                        }
+                    }
+                }
+
+                static public string UsageDirectionFilterLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Supply/Demand";
+                            case Language.zhCN: return "需求/供应";
+                            default: return "Supply/Demand";
+                        }
+                    }
+                }
+
+                static public string UsageDirectionFilterToggleAllLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "All";
+                            case Language.zhCN: return "全部";
+                            default: return "All";
+                        }
+                    }
+                }
+
+                static public string UsageDirectionFilterToggleSupplyLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Supply";
+                            case Language.zhCN: return "供应";
+                            default: return "Supply";
+                        }
+                    }
+                }
+
+                static public string UsageDirectionFilterToggleDemandLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Demand";
+                            case Language.zhCN: return "需求";
+                            default: return "Demand";
+                        }
+                    }
+                }
+
+                static public string UsageDirectionFilterToggleStorageLabel
+                {
+                    get
+                    {
+                        switch (language)
+                        {
+                            case Language.enUS: return "Storage";
+                            case Language.zhCN: return "仓储";
+                            default: return "Storage";
+                        }
+                    }
+                }
             }
         }
 

@@ -19,7 +19,7 @@ namespace DSPTransportStat
     {
         public const string __NAME__ = "DSPTransportStat";
         public const string __GUID__ = "IndexOutOfRange.DSPTransportStat";
-        public const string __VERSION__ = "0.0.14";
+        public const string __VERSION__ = "0.0.15";
 
         static public Plugin Instance { get; set; } = null;
 
@@ -66,13 +66,6 @@ namespace DSPTransportStat
             {
                 ToggleTransportStationsWindow();
             }
-            //else if (VFInput._closePanelE)
-            //{
-            //    if (uiTransportStationsWindow.active)
-            //    {
-            //        uiTransportStationsWindow._Close();
-            //    }
-            //}
         }
 
         private void ToggleTransportStationsWindow ()
@@ -147,6 +140,9 @@ namespace DSPTransportStat
             }
         }
 
+        /// <summary>
+        /// UI组件的创建、初始化以及对部分事件的响应
+        /// </summary>
         class Patch_UIGame
         {
             static private bool isCreated = false;
@@ -172,12 +168,6 @@ namespace DSPTransportStat
                 }
             }
 
-            //[HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnFree")]
-            //static public void UIGame__OnFree_Postfix ()
-            //{
-            //    Instance.uiTransportStationsWindow._Free();
-            //}
-
             [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnUpdate")]
             static public void UIGame__OnUpdate_Postfix ()
             {
@@ -194,12 +184,6 @@ namespace DSPTransportStat
                     Instance.uiTransportStationsWindow._Close();
                 }
             }
-
-            //[HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnDestroy")]
-            //static public void UIGame__OnDestroy_Postfix ()
-            //{
-            //    Instance.uiTransportStationsWindow._Destroy();
-            //}
 
             [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnInit")]
             static private void UIGame__OnInit_Postfix (UIGame __instance)
@@ -218,6 +202,9 @@ namespace DSPTransportStat
             }
         }
 
+        /// <summary>
+        /// 调整游戏对用户输入的响应
+        /// </summary>
         class Patch_VFInput
         {
             [HarmonyPostfix, HarmonyPatch(typeof(VFInput), "_cameraZoomIn", MethodType.Getter)]
@@ -239,6 +226,9 @@ namespace DSPTransportStat
             }
         }
 
+        /// <summary>
+        /// 远程打开任意站点窗口的逻辑
+        /// </summary>
         public class Patch_UIStationWindow
         {
             static public bool IsOpenedFromPlugin
@@ -349,6 +339,9 @@ namespace DSPTransportStat
             }
         }
 
+        /// <summary>
+        /// 远程打开任意站点窗口的逻辑
+        /// </summary>
         class Patch_UIStationStorage
         {
             [HarmonyPrefix, HarmonyPatch(typeof(UIStationStorage), nameof(UIStationStorage.OnItemIconMouseDown))]
