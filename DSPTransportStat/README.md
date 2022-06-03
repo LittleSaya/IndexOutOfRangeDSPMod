@@ -19,7 +19,7 @@ Great thanks to authors of LSTM and Unity Explorer.
 
 ## Compatibility
 
-### 0.0.8 ~ 0.0.15
+### 0.0.8 ~ 0.0.16
 
 Game Version: Early Access 0.9.25.12201, BepInEx: 5.4.19
 
@@ -36,6 +36,14 @@ Game Version: Early Access 0.9.25.12077, BepInEx: 5.4.19
 Ideas are welcome :-)
 
 ## Change log
+
+### 0.0.15 -> 0.0.16
+
+- Searching will ignore case
+
+- Improve compatibility with original station window
+
+- Fix a bug that when you try to open a local station remotely in the station list, an interstellar station be opened instead of the local station you want
 
 ### 0.0.14 -> 0.0.15
 

@@ -223,7 +223,7 @@ namespace DSPTransportStat
             // 创建 transport-stations-entry > config-button
             GameObject childConfigButton = UIUtility.CreateImageButton("config-button", ResourceCache.SpriteSignal504, () =>
             {
-                Plugin.Patch_UIStationWindow.OpenStationWindowOfAnyStation(uiTSE.PlanetData.factory, uiTSE.StationComponent.gene);
+                Plugin.Patch_UIStationWindow.OpenStationWindowOfAnyStation(uiTSE.PlanetData.factory, uiTSE.StationComponent.id);
             });
             childConfigButton.transform.SetParent(uiTSE.transform);
 

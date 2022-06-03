@@ -19,7 +19,7 @@ namespace DSPTransportStat
     {
         public const string __NAME__ = "DSPTransportStat";
         public const string __GUID__ = "IndexOutOfRange.DSPTransportStat";
-        public const string __VERSION__ = "0.0.15";
+        public const string __VERSION__ = "0.0.16";
 
         static public Plugin Instance { get; set; } = null;
 
@@ -195,10 +195,19 @@ namespace DSPTransportStat
                 }
             }
 
-            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
+            [HarmonyPostfix, HarmonyPatch(typeof(UIGame), nameof(UIGame.ShutAllFunctionWindow))]
             static void UIGame_ShutAllFunctionWindow_Postfix ()
             {
                 Instance.uiTransportStationsWindow._Close();
+            }
+
+            /// <summary>
+            /// 如果玩家远程打开了站点窗口，则在玩家手动点击物流塔之前，将游戏还原成远程打开站点窗口之前的状态
+            /// </summary>
+            [HarmonyPrefix, HarmonyPatch(typeof(UIGame), "OnPlayerInspecteeChange")]
+            static void UIGame_OnPlayerInspecteeChange_Prefix ()
+            {
+                UIRoot.instance.uiGame.ShutStationWindow();
             }
         }
 
@@ -275,13 +284,11 @@ namespace DSPTransportStat
                         {
                             win.nameInput.onValueChanged.AddListener(s => typeof(UIStationWindow).GetMethod("OnNameInputSubmit", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(win, new object[1] { s }));
                             win.nameInput.onEndEdit.AddListener(s => typeof(UIStationWindow).GetMethod("OnNameInputSubmit", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(win, new object[1] { s }));
-                            currentStationWindow = win;
                             win.player.onIntendToTransferItems += OnPlayerIntendToTransferItems;
+
+                            currentStationWindow = win;
                         }
                         win.transform.SetAsLastSibling();
-
-                        // 设置 UIGame 的 inspectStationId ，使之与手动打开的情况保持一致
-                        typeof(UIGame).GetField("inspectStationId", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(UIRoot.instance.uiGame, stationId);
                     }
                     catch (Exception message)
                     {
@@ -290,40 +297,17 @@ namespace DSPTransportStat
                 }
             }
 
-            /// <summary>
-            /// 远程打开其他行星上的物流塔时，会将 factory, transport, powerSystem 和 factorySystem 替换成其他行星上的值
-            /// 调用 OnStationIdChange 之前需要将它们重新赋予本地行星的值
-            /// </summary>
-            /// <param name="__instance"></param>
-            [HarmonyPrefix, HarmonyPatch(typeof(UIStationWindow), "OnStationIdChange")]
-            static void UIStationWindow_OnStationIdChange_Prefix (UIStationWindow __instance)
-            {
-                if (IsOpenedFromPlugin)
-                {
-                    PlanetFactory factory = GameMain.localPlanet.factory;
-                    __instance.factory = factory;
-                    __instance.transport = factory.transport;
-                    __instance.powerSystem = factory.powerSystem;
-                    __instance.factorySystem = factory.factorySystem;
-
-                    // 通过 OnStationIdChange 打开物流塔，等于把从 mod 中远程打开的物流塔界面关闭
-                    currentStationWindow = null;
-                }
-            }
-
             [HarmonyPrefix, HarmonyPatch(typeof(UIStationWindow), "_OnClose")]
-            static void UIStationWindow__OnClose_Prefix ()
+            static void UIStationWindow__OnClose_Prefix (UIStationWindow __instance)
             {
+                // 删除 mod 添加的事件监听
                 if (currentStationWindow != null && currentStationWindow.player != null)
                 {
                     currentStationWindow.player.onIntendToTransferItems -= OnPlayerIntendToTransferItems;
-                    currentStationWindow = null;
                 }
 
-                if (currentStationWindow != null && currentStationWindow.player == null)
-                {
-                    Instance.Logger.LogWarning("UIStationWindow._OnClose(): currentStationWindow != null && currentStationWindow.player == null");
-                }
+                // 取消“站点窗口从插件中打开”的状态
+                currentStationWindow = null;
             }
 
             static private void OnPlayerIntendToTransferItems (int _itemId, int _itemCount, int _itemInc)

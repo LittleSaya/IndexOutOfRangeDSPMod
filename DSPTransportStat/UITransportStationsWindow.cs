@@ -554,7 +554,11 @@ namespace DSPTransportStat
                         }
 
                         // 通过搜索字符串对站点进行过滤
-                        if (!string.IsNullOrWhiteSpace(searchString) && !star.name.Contains(searchString) && !planet.name.Contains(searchString) && !station.GetStationName().Contains(searchString))
+                        if (!string.IsNullOrWhiteSpace(searchString) &&
+                            star.name.IndexOf(searchString, StringComparison.CurrentCultureIgnoreCase) == -1 &&
+                            planet.name.IndexOf(searchString, StringComparison.CurrentCultureIgnoreCase) == -1 &&
+                            station.GetStationName().IndexOf(searchString, StringComparison.CurrentCultureIgnoreCase) == -1
+                        )
                         {
                             continue;
                         }
