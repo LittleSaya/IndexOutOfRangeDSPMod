@@ -19,7 +19,7 @@ namespace DSPTransportStat
     {
         public const string __NAME__ = "DSPTransportStat";
         public const string __GUID__ = "IndexOutOfRange.DSPTransportStat";
-        public const string __VERSION__ = "0.0.16";
+        public const string __VERSION__ = "0.0.17";
 
         static public Plugin Instance { get; set; } = null;
 
@@ -298,16 +298,51 @@ namespace DSPTransportStat
             }
 
             [HarmonyPrefix, HarmonyPatch(typeof(UIStationWindow), "_OnClose")]
-            static void UIStationWindow__OnClose_Prefix (UIStationWindow __instance)
+            static bool UIStationWindow__OnClose_Prefix (UIStationWindow __instance, UIStationStorage[] ___storageUIs, ref int ____stationId)
             {
-                // 删除 mod 添加的事件监听
-                if (currentStationWindow != null && currentStationWindow.player != null)
+                if (currentStationWindow == null)
                 {
-                    currentStationWindow.player.onIntendToTransferItems -= OnPlayerIntendToTransferItems;
+                    return true;
                 }
+
+                // 针对从站点列表中打开的窗口进行特殊处理
+                // 由于游戏原本的 _OnClose 函数会使用玩家当前正在检视的对象的ID访问窗口的 factory 的 entityPool ，
+                // 玩家正在检视的对象的 ID 肯定是本地行星上的，而窗口的 factory 可能是另一个行星上的，这可能会导致索引越界，
+                // 因此这里不能直接执行原来的 _OnClose 函数
+                if (__instance.player != null)
+                {
+                    __instance.player.onIntendToTransferItems -= OnPlayerIntendToTransferItems;
+                }
+                __instance.nameInput.onValueChanged.RemoveAllListeners();
+                __instance.nameInput.onEndEdit.RemoveAllListeners();
+                for (int i = 0; i < ___storageUIs.Length; i++)
+                {
+                    ___storageUIs[i]._Close();
+                }
+                __instance.veinCollectorPanel._Close();
+                if (UIItemPicker.isOpened)
+                {
+                    UIItemPicker.Close();
+                }
+                // 不能执行下列代码
+                //if (stationId != 0)
+                //{
+                //    PlayerAction_Inspect actionInspect = player.controller.actionInspect;
+                //    if (actionInspect.inspectId > 0 && actionInspect.inspectType == EObjectType.Entity && factory.entityPool[actionInspect.inspectId].stationId == stationId)
+                //    {
+                //        actionInspect.InspectNothing();
+                //    }
+                //}
+                ____stationId = 0;
+                __instance.factory = null;
+                __instance.transport = null;
+                __instance.powerSystem = null;
+                __instance.factorySystem = null;
+                __instance.player = null;
 
                 // 取消“站点窗口从插件中打开”的状态
                 currentStationWindow = null;
+                return false;
             }
 
             static private void OnPlayerIntendToTransferItems (int _itemId, int _itemCount, int _itemInc)
