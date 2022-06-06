@@ -32,9 +32,9 @@
 
 ### 配置文件的位置
 
-配置文件位于游戏存档目录下的一个子目录中，子目录的名字叫“modData/IndexOutOfRange.DSPAddPlanet”，配置文件的文件名叫“config.txt”
+配置文件位于游戏存档目录下的一个子目录中，子目录的名字叫“modData/IndexOutOfRange.DSPAddPlanet”，配置文件的文件名叫“config.xml”
 
-举例来说，一个存档的完整路径可能是：`C:\Users\administrator\Documents\Dyson Sphere Program\Save\modData\IndexOutOfRange.DSPAddPlanet\config.txt`
+举例来说，一个存档的完整路径可能是：`C:\Users\administrator\Documents\Dyson Sphere Program\Save\modData\IndexOutOfRange.DSPAddPlanet\config.xml`
 
 ### 行星的顺序
 
@@ -42,53 +42,191 @@
 
 ### 格式
 
-一行一个行星，可以有空行和“#”开头的备注行，行格式类似URL参数但不完全相同（该mod使用的URL参数解析器非常简单）。
+旧txt文件的格式请参考旧版本的[说明文档](https://github.com/LittleSaya/IndexOutOfRangeDSPMod/blob/5c8a22a6f428211fcf242fe265cbc7423f76e00d/DSPAddPlanet/README-zh-Hans.md "说明文档")
 
-例子：`uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=4&number=5&gasGiant=false`
+自0.1.0版本起，配置文件改为xml格式，旧txt文件仍能读取但不会包含新的功能，xml文件的基本结构如下所示：
+
+```xml
+<Config>
+    <Planet>
+        <UniqueStarId>GameName-ClusterString-StarName</UniqueStarId>
+        <Index>4</Index>
+        <OrbitAround>0</OrbitAround>
+        <OrbitIndex>2</OrbitIndex>
+        <Number>3</Number>
+        <GasGiant>false</GasGiant>
+        <InfoSeed>0</InfoSeed>
+        <GenSeed>0</GenSeed>
+        <ForcePlanetRadius>false</ForcePlanetRadius>
+        <Radius>200</Radius>
+        <OrbitalPeriod>3600</OrbitalPeriod>
+        <RotationPeriod>3600</RotationPeriod>
+        <IsTidalLocked>true</IsTidalLocked>
+        <OrbitInclination>0</OrbitInclination>
+        <Obliquity>0</Obliquity>
+        <DontGenerateVein>true</DontGenerateVein>
+        <ThemeId>0</ThemeId>
+        <OrbitLongitude>0</OrbitLongitude>
+        <VeinCustom>
+            <Iron>
+                <VeinGroupCount>
+                    <Type>Accurate</Type>
+                    <AccurateValue>10</AccurateValue>
+                </VeinGroupCount>
+                <VeinSpotCount>
+                    <Type>Random</Type>
+                    <RandomBaseValue>100000</RandomBaseValue>
+                    <RandomCoef>1</RandomCoef>
+                    <RandomMulOffset>0</RandomMulOffset>
+                    <RandomAddOffset>5</RandomAddOffset>
+                </VeinSpotCount>
+                <VeinAmount>
+                    <Type>Default</Type>
+                </VeinAmount>
+            </Iron>
+        </VeinCustom>
+        <ReplaceAllVeinsTo>Copper</ReplaceAllVeinsTo>
+    </Planet>
+</Config>
+```
 
 ### 参数描述
 
-```
-     uniqueStarId (必须): 能够基本上唯一确定一个恒星的字符串，由“存档名称”、“星区名称”和“恒星名称”构成
-                          举例来说，如果“2_test”是您的存档名称，“44525415-64-A10”是您的星区名称，“Erakis”是您想要添加新的行星的恒星名称，则该恒星的“唯一恒星ID”就是“2_test-44525415-64-A10-Erakis”
-
-            index (必须): 新行星的索引，应该比目标恒星的最后一个行星的索引大1
-                          比如说如果原来这个星系里有4个行星，您新增了一个行星，那么这个新行星的索引就是4（索引从0开始）
-
-      orbitAround (必须): 新行星围绕哪个行星旋转，设置成目标行星的“number”就围绕目标行星旋转，设置成0就围绕恒星旋转
-
-       orbitIndex (必须): 新行星在哪个轨道上公转，最小1，最大16，不能和原有行星重合
-
-           number (必须): 新行星的编号，编号规则见下图
-
-         gasGiant (必须): 新行星是否是气态巨星，值可以为true或false，设置成true会导致下面关于星星半径的设置失效
-
-        info_seed (可选): 默认值为0，两个用于生成行星的种子之一。
-
-         gen_seed (可选): 默认值为0，两个用于生成行星的种子之一。
-
-     planetRadius (可选): 默认值为200，行星半径，默认的200是正常大小，最大600
-                          200、400和600是测试过的，800会出问题
-
-forcePlanetRadius (可选): 默认值为false，如果您想测试半径大于600的行星，请将该项设置为true
-
-    orbitalPeriod (可选): 默认值为3600，公转周期，单位“秒”
-
-   rotationPeriod (可选): 默认值为3600，自转周期，单位“秒”
-
-    isTidalLocked (可选): 默认值为true，该项为true时，行星描述会多一串“潮汐锁定 永昼永夜”
-                          这个选项应该没有实际影响，毕竟公转周期等于自转周期就已经是实际上的“潮汐锁定”了
-
- orbitInclination (可选): 默认值为0，轨道倾角
-
-   orbitLongitude (可选)：无默认值，轨道升交点经度
-
-        obliquity (可选): 默认值为0，地轴倾角
-
- dontGenerateVein (可选): 默认值为true，是否**不**生成矿脉
-
-            theme (可选): 无默认值，用于指定新行星的主题，下方“可选主题”表格中列出了当前游戏中所有可选的主题，如果不指定该选项将会使用游戏自动生成的主题，
-                          这里的选择的行星主题必须和上面的`gasGiant`选项相匹配，如果设置了`gasGiant=true`，则应该选择“气态行星”或“冰巨星”主题
+```xml
+<Config>
+    <Planet>
+        <UniqueStarId>
+            (必须)
+            能够基本上唯一确定一个恒星的字符串，由“存档名称”、“星区名称”和“恒星名称”构成
+            举例来说，如果“2_test”是您的存档名称，“44525415-64-A10”是您的星区名称，“Erakis”是您想要添加新的行星的恒星名称，
+            则该恒星的“唯一恒星ID”就是“2_test-44525415-64-A10-Erakis”
+        </UniqueStarId>
+        <Index>
+            (必须)
+            新行星的索引，应该比目标恒星的最后一个行星的索引大1，
+            并且同一个恒星周围每个行星的Index都应该唯一，
+            比如说如果原来这个星系里有4个行星，您新增了一个行星，那么这个新行星的索引就是4（索引从0开始）
+        </Index>
+        <OrbitAround>
+            (必须)
+            新行星围绕哪个行星旋转，设置成目标行星的“Number”就围绕目标行星旋转，设置成0就围绕恒星旋转
+        </OrbitAround>
+        <OrbitIndex>
+            (必须)
+            新行星在哪个轨道上公转，最小1，最大16
+        </OrbitIndex>
+        <Number>
+            (必须)
+            新行星的编号，编号规则见下图
+        </Number>
+        <GasGiant>
+            (可选)
+            默认值为false
+            新行星是否是气态巨星，值可以为true或false，设置成true会导致关于行星半径的设置失效
+        </GasGiant>
+        <InfoSeed>
+            (可选)
+            默认值为0
+            两个用于生成行星的种子之一
+        </InfoSeed>
+        <GenSeed>
+            (可选)
+            默认值为0
+            两个用于生成行星的种子之一
+        </GenSeed>
+        <ForcePlanetRadius>
+            (可选)
+            默认值为false
+            如果需要测试半径大于600（或小于50）的行星，请将该项设置为true
+        </ForcePlanetRadius>
+        <Radius>
+            (可选)
+            默认值为200
+            行星半径，默认的200是正常大小，最大600
+            200、400和600是测试过的，800会崩溃
+        </Radius>
+        <OrbitalPeriod>
+            (可选)
+            默认值为3600
+            公转周期，单位“秒”
+        </OrbitalPeriod>
+        <RotationPeriod>
+            (可选)
+            默认值为3600
+            自转周期，单位“秒”
+        </RotationPeriod>
+        <IsTidalLocked>
+            (可选)
+            默认值为true
+            该项为true时，行星描述会多一串“潮汐锁定 永昼永夜”
+            这个选项应该没有实际影响，毕竟公转周期等于自转周期就已经是实际上的“潮汐锁定”了
+        </IsTidalLocked>
+        <OrbitInclination>
+            (可选)
+            默认值为0
+            轨道倾角
+        </OrbitInclination>
+        <Obliquity>
+            (可选)
+            默认值为0
+            地轴倾角
+        </Obliquity>
+        <DontGenerateVein>
+            (可选)
+            默认值为true
+            是否**不**生成矿脉
+        </DontGenerateVein>
+        <ThemeId>
+            (可选)
+            无默认值
+            用于指定新行星的主题，下方“可选主题”表格中列出了当前游戏中所有可选的主题，如果不指定该选项将会使用游戏自动生成的主题，
+            这里的选择的行星主题必须和上面的GasGiant选项相匹配，如果设置了<GasGiant>true</GasGiant>，则应该选择“气态行星”或“冰巨星”主题
+        </ThemeId>
+        <OrbitLongitude>
+            (可选)
+            无默认值
+            轨道升交点经度，格式为“度度,分分”，例如“30,30”（30度30分）
+        </OrbitLongitude>
+        <VeinCustom>
+            (可选)
+            无默认值
+            在此处添加新的节点可以修改矿物的类型、大小和数量，也可以用于添加在正常的矿脉生成过程中受限不能生成的矿物
+            节点的标签名称必须是游戏内已有的矿物类型，所有可用的矿物类型名称见下表
+            <Iron>
+                对每一种矿物，您可以修改其矿脉生成过程的三个方面：
+                    1. VeinGroupCount：生成多少组矿脉
+                    2. VeinSpotCount：每组矿脉生成多少个矿点
+                    3. VeinAmount：每个矿点含有多少矿物
+                对每个方面，您可以通过若干参数指定数值的生成方式：
+                    第一个参数是Type，Type是必要参数，有三个可选值：Accurate、Random和Default
+                    如果Type的值为Accurate，那么您还需要设置AccurateValue，意思是生成固定组数的矿脉、固定数量的矿点或固定的矿物含量
+                    如果Type的值为Random，可以不设置其他参数（使用默认值），或者手动设置RandomBaseValue、RandomCoef、RandomMulOffset和RandomAddOffset的值（随机数的计算方式见下文）
+                    如果Type的值为Default，表示不对该方面进行干预
+                <VeinGroupCount>
+                    <Type>Accurate</Type>
+                    <AccurateValue>10</AccurateValue>
+                </VeinGroupCount>
+                <VeinSpotCount>
+                    <Type>Random</Type>
+                    <RandomBaseValue>100000</RandomBaseValue>
+                    <RandomCoef>1</RandomCoef>
+                    <RandomMulOffset>0</RandomMulOffset>
+                    <RandomAddOffset>5</RandomAddOffset>
+                </VeinSpotCount>
+                <VeinAmount>
+                    <Type>Default</Type>
+                </VeinAmount>
+            </Iron>
+        </VeinCustom>
+        <ReplaceAllVeinsTo>
+            (可选)
+            默认值
+            把所有矿脉的类型都改为由该参数指定的类型
+            替换所有矿脉的步骤发生在生成矿脉之后（也就是发生在VeinCustom参数起作用之后）
+            所有可用的矿脉类型见下文
+        </ReplaceAllVeinsTo>
+    </Planet>
+</Config>
 ```
 
 #### 可选主题（游戏版本 0.9.25.12201 ）
@@ -117,21 +255,42 @@ forcePlanetRadius (可选): 默认值为false，如果您想测试半径大于60
 | 20 | 红冰荒漠 | Desert | -2 |  |  | 0.7 | 55 | 0 |  | 0 | 1 |
 | 21 | 气态巨星 | Gas | 1 | 氢, 重氢 | 0.84, 0.16 | 0 | 0 | 0 |  | 0 | 0 |
 
+#### 可用矿脉/矿物类型 (game version 0.9.25.12201)
+
+| 矿脉类型 | 给人类阅读的矿脉类型名称 |
+| --------- | ------------------- |
+| Iron      | 铁                |
+| Copper    | 铜              |
+| Silicium  | 硅            |
+| Titanium  | 钛            |
+| Stone     | 石头               |
+| Coal      | 煤炭                |
+| Oil       | 原油                 |
+| Fireice   | 可燃冰             |
+| Diamond   | 金伯利矿石          |
+| Fractal   | 分形硅石     |
+| Crysrub   | 有机晶体     |
+| Grat      | 光栅石 |
+| Bamboo    | 刺笋结晶 |
+| Mag       | 单极磁石 |
+
+#### 随机数的计算方式
+
+```
+A = RandomBaseValue * RandomCoef
+B = A * RandomMulOffset
+C1 = |A - B|
+C2 = A + B
+D = 在范围 [C1, C2] 中随机选择
+E1 = |D - RandomAddOffset|
+E2 = D + RandomAddOffset
+F = 在范围 [E1, E2] 中随机选择
+最终结果是 F
+```
+
 #### 关于“number”参数：
 
 ![parameter_number.png](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/parameter_number.png "关于“number”参数")
-
-### 示例配置文件
-
-```
-# Add additional planets to your game.
-# New planets will be added in the same order as they are written in this file.
-# The format of the config value is similar to URL query string (but not the same, the parser used here is extremely simple)
-# For detailed description, please refer to https://dsp.thunderstore.io/package/IndexOutOfRange/DSPAddPlanet/
-(EXAMPLE)uniqueStarId=UNIQUE_STAR_ID&index=INDEX&orbitAround=ORBIT_AROUND&orbitIndex=ORBIT_INDEX&number=NUMBER&gasGiant=GAS_GIANT&info_seed=INFO_SEED&gen_seed=GEN_SEED&planetRadius=PLANET_RADIUS&forcePlanetRadius=FORCE_PLANET_RADIUS&orbitalPeriod=ORBITAL_PERIOD&rotationPeriod=ROTATION_PERIOD&isTidalLocked=IS_TIDAL_LOCKED&orbitInclination=ORBIT_INCLINATION&obliquity=OBLIQUITY&dontGenerateVein=DONT_GENERATE_VEIN
-
-uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&number=4&gasGiant=false&planetRadius=600
-```
 
 ### 其他重要事项
 
@@ -145,15 +304,24 @@ uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&nu
 
 ![screenshot3.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot3.jpg "screenshot3")
 
-## 待办
+![screenshot4.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot4-zh-Hans.jpg "screenshot4")
 
 ## 兼容性
 
-### 0.0.1 ~ 0.0.12
+### 0.0.1 ~ 0.1.0
 
 Build target ：游戏版本 0.9.25.12201 ， BepInEx 版本： 5.4.19 （应该也能够在 5.4.17 版本下正常运行）
 
 ## 更新日志
+
+### 0.0.12 -> 0.1.0
+
+- 将配置文件的类型从纯文本改为XML格式
+
+- 添加自定义矿脉生成的参数
+- 将参数`gasGiant`和`GasGiant`改为可选参数，默认为`false`
+
+- 修复了抽水机会把水填上的问题
 
 ### 0.0.11 -> 0.0.12
 

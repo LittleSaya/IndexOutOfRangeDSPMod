@@ -269,6 +269,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AdditionalPlanetConfig.cs" />
+    <Compile Include="ConfigUtility.cs" />
     <Compile Include="Extensions\PlanetRawDataExtension.cs" />
     <Compile Include="Global.cs" />
     <Compile Include="ILUtility.cs" />
@@ -297,6 +298,8 @@
     <Content Include="Doc\screenshot1.jpg" />
     <Content Include="Doc\screenshot2.jpg" />
     <Content Include="Doc\screenshot3.jpg" />
+    <Content Include="Doc\screenshot4-zh-Hans.jpg" />
+    <Content Include="Doc\screenshot4.jpg" />
     <Content Include="thunderstore\icon.png" />
   </ItemGroup>
   <ItemGroup />

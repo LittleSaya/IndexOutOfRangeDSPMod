@@ -20,6 +20,12 @@ namespace DSPAddPlanet
             logger = logSource;
         }
 
+        static public void ProcessObject (CodeMatcher matcher, VariableType variableType, int variableIndex, MethodInfo method)
+        {
+            LoadVariable(matcher, variableType, variableIndex);
+            matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Call, method));
+        }
+
         static public void PrintAllCodes (CodeMatcher matcher)
         {
             int tempPos = matcher.Pos;
@@ -29,6 +35,23 @@ namespace DSPAddPlanet
             {
                 codes.Append($"\r\n{matcher.Pos,5}: {matcher.Opcode.Name,10} {(matcher.Operand == null ? "" : matcher.Operand.ToString() + '(' + matcher.Operand.GetType() + ')')}");
                 matcher.Advance(1);
+            }
+            matcher.Start();
+            matcher.Advance(tempPos);
+            logger.LogInfo(codes);
+        }
+
+        static public void PrintCodes (CodeMatcher matcher, int offset, int length)
+        {
+            int tempPos = matcher.Pos;
+            matcher.Advance(offset);
+            int count = 0;
+            StringBuilder codes = new StringBuilder();
+            while (matcher.IsValid && count < length)
+            {
+                codes.Append($"\r\n{matcher.Pos,5}: {matcher.Opcode.Name,10} {(matcher.Operand == null ? "" : matcher.Operand.ToString() + '(' + matcher.Operand.GetType() + ')')}");
+                matcher.Advance(1);
+                ++count;
             }
             matcher.Start();
             matcher.Advance(tempPos);

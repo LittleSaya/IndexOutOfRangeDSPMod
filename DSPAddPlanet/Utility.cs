@@ -1,3 +1,4 @@
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,6 +79,17 @@ namespace DSPAddPlanet
             }
 
             Plugin.Instance.Logger.LogInfo("\r\n" + table);
+        }
+
+        static public string EnumValuesJoin<T> () where T : Enum
+        {
+            Array values = Enum.GetValues(typeof(T));
+            List<string> strings = new List<string>();
+            foreach (object v in values)
+            {
+                strings.Add(v.ToString());
+            }
+            return strings.Join();
         }
     }
 }

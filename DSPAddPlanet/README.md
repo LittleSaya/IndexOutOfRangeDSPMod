@@ -40,9 +40,9 @@ Note that auto-saves have the same name as your last loaded game (though it's no
 
 ### Config file location
 
-The config file lies in your game's save file directory, in a sub-directory named 'modData/IndexOutOfRange.DSPAddPlanet', file name 'config.txt'.
+The config file lies in your game's save file directory, in a sub-directory named 'modData/IndexOutOfRange.DSPAddPlanet', file name 'config.xml'.
 
-For example `C:\Users\administrator\Documents\Dyson Sphere Program\Save\modData\IndexOutOfRange.DSPAddPlanet\config.txt`
+For example `C:\Users\administrator\Documents\Dyson Sphere Program\Save\modData\IndexOutOfRange.DSPAddPlanet\config.xml`
 
 ### Planet order
 
@@ -50,54 +50,203 @@ New planets will be added in the same order as they are written in the config fi
 
 ### Format
 
-One planet per row, empty rows and comment rows begin with '#' are allowed, row format is similar to URL query string (but not the same, the parser used here is extremely simple).
+For old txt format please to [Old README](https://dsp.thunderstore.io/package/IndexOutOfRange/DSPAddPlanet/0.0.12/ "Old README")
 
-Example: `uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=4&number=5&gasGiant=false`
+Since version 0.1.0, the config file has changed to an xml file. It's basic structure is displayed below. Old `.txt` file can still be read but without new features.
+
+```xml
+<Config>
+    <Planet>
+        <UniqueStarId>GameName-ClusterString-StarName</UniqueStarId>
+        <Index>4</Index>
+        <OrbitAround>0</OrbitAround>
+        <OrbitIndex>2</OrbitIndex>
+        <Number>3</Number>
+        <GasGiant>false</GasGiant>
+        <InfoSeed>0</InfoSeed>
+        <GenSeed>0</GenSeed>
+        <ForcePlanetRadius>false</ForcePlanetRadius>
+        <Radius>200</Radius>
+        <OrbitalPeriod>3600</OrbitalPeriod>
+        <RotationPeriod>3600</RotationPeriod>
+        <IsTidalLocked>true</IsTidalLocked>
+        <OrbitInclination>0</OrbitInclination>
+        <Obliquity>0</Obliquity>
+        <DontGenerateVein>true</DontGenerateVein>
+        <ThemeId>0</ThemeId>
+        <OrbitLongitude>0</OrbitLongitude>
+        <VeinCustom>
+            <Iron>
+                <VeinGroupCount>
+                    <Type>Accurate</Type>
+                    <AccurateValue>10</AccurateValue>
+                </VeinGroupCount>
+                <VeinSpotCount>
+                    <Type>Random</Type>
+                    <RandomBaseValue>100000</RandomBaseValue>
+                    <RandomCoef>1</RandomCoef>
+                    <RandomMulOffset>0</RandomMulOffset>
+                    <RandomAddOffset>5</RandomAddOffset>
+                </VeinSpotCount>
+                <VeinAmount>
+                    <Type>Default</Type>
+                </VeinAmount>
+            </Iron>
+        </VeinCustom>
+        <ReplaceAllVeinsTo>Copper</ReplaceAllVeinsTo>
+    </Planet>
+</Config>
+```
 
 ### Parameter descriptions
 
-```
-     uniqueStarId (required): a unique id of the target star composed of your save name, cluster string and star name,
-                              for example, if '2_test' is your save name, '44525415-64-A10' is your cluster name, 'Erakis' is the name of the star you want to add new planets to,
-                              then your uniqueStarId will be '2_test-44525415-64-A10-Erakis'
-
-            index (required): the index of your new planet, should be larger than the index of the last original planet in your target system,
-                              for example if your target system originally has 4 planets, you want to add 1 new planet, then this new planet's index should be 4 (start from 0)
-
-      orbitAround (required): which planet you want your new planet to orbit around, set to the 'number' of target planet to orbit around target planet, set to 0 to orbit around the star
-
-       orbitIndex (required): which orbit this new planet will use, ranges from 1 to 16 (according to 'StarGen.orbitRadius')
-
-           number (required): the number of youe new planet in the system, see image below on how to set this value
-
-         gasGiant (required): wether your new planet a gas giant, true or false, set this value to true will make 'planetRadius' useless
-
-        info_seed (optional): default value is 0. one of two seeds to generate a planet
-
-         gen_seed (optional): default value is 0. one of two seeds to generate a planet
-
-     planetRadius (optional): default value is 200. as it's named, the radius of your new planet, the default radius is a normal size, the max radius is set to 600
-                              value 200, 400 and 600 are tested, 800 caused problems
-
-forcePlanetRadius (optional): default value is false. if you want to test planet radius larger than 600, you need to set this to true, 
-
-    orbitalPeriod (optional): default value is 3600. orbital revolution, in seconds
-
-   rotationPeriod (optional): default value is 3600. self rotation, in seconds
-
-    isTidalLocked (optional): default value is true. set this option to true to display a 'tidal locked' text in planet description,
-                              I think this option does not make real difference, if you let 'orbitalPeriod' equals to 'rotationPeriod', then you should get a tidal locked planet
-
- orbitInclination (optional): default value is 0. planet's orbital inclination
-
-   orbitLongitude (optional): no default value. planet's longitude of (AN), format 'DEGREE,MINUTE', e.g. '30,33'
-
-        obliquity (optional): default value is 0. planet's obliquity
-
- dontGenerateVein (optional): default value is true. if you want veins to generated on your new planet, set this option to false
-
-            theme (optional): no default value. theme ID of your new planet, see the table below for available themes, a theme generated by original planet generator will be used if you leave this option unspecified,
-                              the theme specified here must match the 'gasGiant' option above, for example, if you set 'gasGiant=true' then you should choose a 'Gas Giant' or 'Ice Giant' theme
+```xml
+<Config>
+    <Planet>
+        <UniqueStarId>
+            (required)
+            a unique id of the target star composed of your save name, cluster string and star name,
+            for example, if '2_test' is your save name, '44525415-64-A10' is your cluster name,
+            'Erakis' is the name of the star you want to add new planets to,
+            then your uniqueStarId will be '2_test-44525415-64-A10-Erakis'
+        </UniqueStarId>
+        <Index>
+            (required)
+            the index of your new planet,
+            must be larger than the index of the last original planet in your target system,
+            and must not be duplicated with other old/new planets,
+            for example if your target system originally has 4 planets, you want to add 1 new planet,
+            then this new planet's index should be 4 (start from 0)
+        </Index>
+        <OrbitAround>
+            (required)
+            which planet you want your new planet to orbit around,
+            set to the 'Number' of target planet to orbit around target planet, set to 0 to orbit around the star
+        </OrbitAround>
+        <OrbitIndex>
+            (required)
+            which orbit this new planet will use, ranges from 1 to 16 (according to 'StarGen.orbitRadius')
+        </OrbitIndex>
+        <Number>
+            (required)
+            the number of your new planet in the system, see image below on how to set this value
+        </Number>
+        <GasGiant>
+            (optional)
+            default value is false.
+            wether your new planet a gas giant, true or false, set this value to true will make 'Radius' useless
+        </GasGiant>
+        <InfoSeed>
+            (optional)
+            default value is 0.
+            one of two seeds to generate a planet
+        </InfoSeed>
+        <GenSeed>
+            (optional)
+            default value is 0.
+            one of two seeds to generate a planet
+        </GenSeed>
+        <ForcePlanetRadius>
+            (optional)
+            default value is false.
+            if you want to test planet radius larger than 600 (or smaller than 50), you need to set this option to true
+        </ForcePlanetRadius>
+        <Radius>
+            (optional)
+            default value is 200.
+            as it's named, the radius of your new planet, the default radius is a normal size, the max radius is 600,
+            value 200, 400 and 600 are tested, 800 caused crashes
+        </Radius>
+        <OrbitalPeriod>
+            (optional)
+            default value is 3600.
+            orbital revolution period, in seconds
+        </OrbitalPeriod>
+        <RotationPeriod>
+            (optional)
+            default value is 3600.
+            self rotation period, in seconds
+        </RotationPeriod>
+        <IsTidalLocked>
+            (optional)
+            default value is true.
+            set this option to true to display a 'tidal locked' text in planet description,
+            I think this option does not make real difference,
+            if you let 'orbitalPeriod' equals to 'rotationPeriod', then you should get a tidal locked planet
+        </IsTidalLocked>
+        <OrbitInclination>
+            (optional)
+            default value is 0.
+            planet's orbital inclination
+        </OrbitInclination>
+        <Obliquity>
+            (optional)
+            default value is 0.
+            planet's obliquity
+        </Obliquity>
+        <DontGenerateVein>
+            (optional)
+            default value is true.
+            if you want veins to generated on your new planet, set this option to false
+        </DontGenerateVein>
+        <ThemeId>
+            (optional)
+            no default value.
+            theme ID of your new planet, see the table below for available themes,
+            a theme generated by original planet generator will be used if you leave this option unspecified,
+            the theme specified here must match the 'gasGiant' option above,
+            for example, if you set '<GasGiant>true</GasGiant>' then you should choose a 'Gas Giant' or 'Ice Giant' theme
+        </ThemeId>
+        <OrbitLongitude>
+            (optional)
+            no default value.
+            planet's longitude of (AN), format 'DEGREE,MINUTE', e.g. '30,33'
+        </OrbitLongitude>
+        <VeinCustom>
+            (optional)
+            no default value.
+            change the type, size and amount of veins.
+            insert a new node here with the vein type you want to change as the tag name.
+            see table below for all available vein types.
+            this parameter can be used to add types of viens which can not be generated in normal vein generation process.
+            <Iron>
+                for each type of vein you can specify three aspects of it's generation process:
+                    VeinGroupCount: how many groups of veins will be generated
+                    VeinSpotCount: how many vein spots will be generated in a group
+                    VeinAmount: the amount of mineral in a vein spot
+                in each aspect you can specify how numbers be generated by specifying some parameters:
+                    the first parameter is 'Type', if you specified an aspect, then you must also specify it's 'Type' parameter
+                    there are three types: 'Accurate', 'Random' or 'Default'.
+                        if you set 'Type' to 'Accurate', then you also need to set 'AccurateValue',
+                        if you set 'Type' to 'Random', then you can leave other parameters unspecified and default values will be used,
+                            or you can manually set 'RandomBaseValue', 'RandomCoef', 'RandomMulOffset' or 'RandomAddOffset' to values you want,
+                            see below for how random values been calculated.
+                        if you set 'Type' to 'Default', then nothing will be modified.
+                <VeinGroupCount>
+                    <Type>Accurate</Type>
+                    <AccurateValue>10</AccurateValue>
+                </VeinGroupCount>
+                <VeinSpotCount>
+                    <Type>Random</Type>
+                    <RandomBaseValue>100000</RandomBaseValue>
+                    <RandomCoef>1</RandomCoef>
+                    <RandomMulOffset>0</RandomMulOffset>
+                    <RandomAddOffset>5</RandomAddOffset>
+                </VeinSpotCount>
+                <VeinAmount>
+                    <Type>Default</Type>
+                </VeinAmount>
+            </Iron>
+        </VeinCustom>
+        <ReplaceAllVeinsTo>
+            (optional)
+            no default value.
+            change all veins to the type you specified.
+            this step takes after 'VeinCustom'.
+            see below for all available vein types.
+        </ReplaceAllVeinsTo>
+    </Planet>
+</Config>
 ```
 
 #### Available themes (game version 0.9.25.12201)
@@ -126,21 +275,42 @@ forcePlanetRadius (optional): default value is false. if you want to test planet
 | 20 | Scarlet Ice Lake | Desert | -2 |  |  | 0.7 | 55 | 0 |  | 0 | 1 |
 | 21 | Gas Giant | Gas | 1 | Hydrogen, Deuterium | 0.84, 0.16 | 0 | 0 | 0 |  | 0 | 0 |
 
+#### Available vein types (game version 0.9.25.12201)
+
+| Vein type | Name for human read |
+| --------- | ------------------- |
+| Iron      | Iron                |
+| Copper    | Copper              |
+| Silicium  | Silicium            |
+| Titanium  | Titanium            |
+| Stone     | Stone               |
+| Coal      | Coal                |
+| Oil       | Oil                 |
+| Fireice   | Fireice             |
+| Diamond   | Kimberlite          |
+| Fractal   | Fractal Silicon     |
+| Crysrub   | Organic Crystal     |
+| Grat      | Optical Grating Crystal |
+| Bamboo    | Spiniform Stalagmite Crystal |
+| Mag       | Unipolar Magnet |
+
+#### Random value calculation
+
+```
+A = RandomBaseValue * RandomCoef
+B = A * RandomMulOffset
+C1 = |A - B|
+C2 = A + B
+D = randomly pick in range [C1, C2]
+E1 = |D - RandomAddOffset|
+E2 = D + RandomAddOffset
+F = randomly pick in range [E1, E2]
+F is final result
+```
+
 #### About the 'number' parameter:
 
 ![parameter_number.png](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/parameter_number.png "About the 'number' parameter")
-
-### Example config file
-
-```
-# Add additional planets to your game.
-# New planets will be added in the same order as they are written in this file.
-# The format of the config value is similar to URL query string (but not the same, the parser used here is extremely simple)
-# For detailed description, please refer to https://dsp.thunderstore.io/package/IndexOutOfRange/DSPAddPlanet/
-(EXAMPLE)uniqueStarId=UNIQUE_STAR_ID&index=INDEX&orbitAround=ORBIT_AROUND&orbitIndex=ORBIT_INDEX&number=NUMBER&gasGiant=GAS_GIANT&info_seed=INFO_SEED&gen_seed=GEN_SEED&planetRadius=PLANET_RADIUS&forcePlanetRadius=FORCE_PLANET_RADIUS&orbitalPeriod=ORBITAL_PERIOD&rotationPeriod=ROTATION_PERIOD&isTidalLocked=IS_TIDAL_LOCKED&orbitInclination=ORBIT_INCLINATION&obliquity=OBLIQUITY&dontGenerateVein=DONT_GENERATE_VEIN
-
-uniqueStarId=2_test-44525415-64-A10-Erakis&index=4&orbitAround=0&orbitIndex=6&number=4&gasGiant=false&planetRadius=600
-```
 
 ### Other important things
 
@@ -154,15 +324,24 @@ Careful about the name of your save file when you save your game because new pla
 
 ![screenshot3.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot3.jpg "screenshot3")
 
-## Todo
+![screenshot4.jpg](https://raw.githubusercontent.com/LittleSaya/IndexOutOfRangeDSPMod/master/DSPAddPlanet/Doc/screenshot4.jpg "screenshot4")
 
 ## Compatibility
 
-### 0.0.1 ~ 0.0.12
+### 0.0.1 ~ 0.1.0
 
 Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
 
 ## Change log
+
+### 0.0.12 -> 0.1.0
+
+- Change config format from pure text to xml
+
+- Add parameters to customize vein generation
+- Change parameter 'gasGiant' and 'GasGiant' to optional, default false
+
+- Fix problem that pumps will bury the water when you place them in water
 
 ### 0.0.11 -> 0.0.12
 

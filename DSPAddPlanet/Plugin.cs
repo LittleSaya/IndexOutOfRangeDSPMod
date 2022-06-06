@@ -21,22 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.0.12";
-
-        public const float MAX_PLANET_RADIUS = 600;
-
-        public const int DEFAULT_INFO_SEED = 0;
-        public const int DEFAULT_GEN_SEED = 0;
-        public const bool DEFAULT_FORCE_PLANET_RADIUS = false;
-        public const float DEFAULT_PLANET_RADIUS = 200;
-        public const float DEFAULT_ORBITAL_PERIOD = 3600;
-        public const float DEFAULT_ROTATION_PERIOD = 3600;
-        public const bool DEFAULT_IS_TIDAL_LOCKED = true;
-        public const float DEFAULT_ORBIT_INCLINATION = 0;
-        public const float DEFAULT_OBLIQUITY = 0;
-        public const bool DEFAULT_DONT_GENERATE_VEIN = true;
-        public const int THEME_NOT_SPECIFIED = int.MinValue;
-        public const float ORBIT_LONGITUDE_NOT_SPECIFIED = float.MinValue;
+        public const string PLUGIN_VERSION = "0.1.0";
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
@@ -78,293 +63,12 @@ namespace DSPAddPlanet
             harmony.PatchAll(typeof(Patch_PlanetGrid));
             harmony.PatchAll(typeof(Patch_PlatformSystem));
             harmony.PatchAll(typeof(Patch_BuildTool_BlueprintPaste));
+            harmony.PatchAll(typeof(Patch_PlanetFactory));
 
             // 创建用户界面
             harmony.PatchAll(typeof(Patch_UIGame));
 
             harmony.PatchAll(typeof(Patch_Debug));
-        }
-
-        /// <summary>
-        /// 尝试读取配置
-        /// </summary>
-        private void TryReadConfig ()
-        {
-            additionalPlanets.Clear();
-
-            // 尝试读取配置文件
-            string modDataDir = GameConfig.gameSaveFolder + "modData/IndexOutOfRange.DSPAddPlanet/";
-            if (!Directory.Exists(modDataDir))
-            {
-                Directory.CreateDirectory(modDataDir);
-            }
-            string configFilePath = modDataDir + "config.txt";
-            if (!File.Exists(configFilePath))
-            {
-                // 如果没有找到配置文件，则创建配置文件
-                StreamWriter writer = File.CreateText(configFilePath);
-
-                // 写入样例配置
-                // uniqueStarId：唯一恒星ID
-                // index：星球的索引，从0开始
-                // orbitAround：星球是否是其他星球的卫星，如果是卫星的话，是哪个星球的卫星（被环绕卫星的number）
-                // orbitIndex：星球公转轨道的半径
-                // number：星球的编号，（似乎）从1开始
-                // gasGiant：星球是否是气态巨星
-                // info_seed：种子
-                // gen_seed：种子
-                // planetRadius：行星半径
-                // forcePlanetRadius：是否忽略行星半径的限制（最大600）
-                // orbitalPeriod：公转周期（秒）
-                // rotationPeriod：自转周期（秒）
-                // isTidalLocked：是否潮汐锁定
-                // orbitInclination：轨道倾角（度）
-                // orbitLongitude：升交点经度（度,分）
-                // obliquity：地轴倾角（度）
-                // dontGenerateVein：是否不生成矿脉
-                // theme：行星主题
-                writer.WriteLine("# Add additional planets to your game.");
-                writer.WriteLine("# New planets will be added in the same order as they are written in this file.");
-                writer.WriteLine("# The format of the config value is similar to URL query string (but not the same, the parser used here is extremely simple)");
-                writer.WriteLine("# For detailed description, please refer to https://dsp.thunderstore.io/package/IndexOutOfRange/DSPAddPlanet/");
-                writer.WriteLine(
-                    new StringBuilder()
-                        .Append("(EXAMPLE)")
-                        .Append("uniqueStarId=UNIQUE_STAR_ID")
-                        .Append("&index=INDEX")
-                        .Append("&orbitAround=ORBIT_AROUND")
-                        .Append("&orbitIndex=ORBIT_INDEX")
-                        .Append("&number=NUMBER")
-                        .Append("&gasGiant=GAS_GIANT")
-                        .Append("&info_seed=INFO_SEED")
-                        .Append("&gen_seed=GEN_SEED")
-                        .Append("&planetRadius=PLANET_RADIUS")
-                        .Append("&forcePlanetRadius=FORCE_PLANET_RADIUS")
-                        .Append("&orbitalPeriod=ORBITAL_PERIOD")
-                        .Append("&rotationPeriod=ROTATION_PERIOD")
-                        .Append("&isTidalLocked=IS_TIDAL_LOCKED")
-                        .Append("&orbitInclination=ORBIT_INCLINATION")
-                        .Append("&orbitLongitude=ORBIT_LONGITUDE")
-                        .Append("&obliquity=OBLIQUITY")
-                        .Append("&dontGenerateVein=DONT_GENERATE_VEIN")
-                        .Append("&theme=THEME")
-                        .ToString()
-                );
-
-                writer.Flush();
-                writer.Dispose();
-
-                // 在没有配置文件的情况下，不对游戏进行修改
-                return;
-            }
-
-            ReadConfig(configFilePath);
-        }
-
-        /// <summary>
-        /// 读取配置
-        /// </summary>
-        /// <param name="configFilePath"></param>
-        private void ReadConfig (string configFilePath)
-        {
-            // 获取配置
-            string[] rawConfigArray = File.ReadAllLines(configFilePath);
-
-            for (int i = 0; i < rawConfigArray.Length; ++i)
-            {
-                string row = rawConfigArray[i].Trim();
-
-                Instance.Logger.LogInfo($"Reading config #{i}: {row}");
-
-                if (row.IsNullOrWhiteSpace() || row.StartsWith("#") || row.StartsWith("(EXAMPLE)"))
-                {
-                    continue;
-                }
-
-                Dictionary<string, string> configMap = Utility.ParseQueryString(row);
-
-                string uniqueStarId = configMap.GetValueSafe("uniqueStarId");
-                if (string.IsNullOrWhiteSpace(uniqueStarId))
-                {
-                    Instance.Logger.LogError($"    Missing parameter 'uniqueStarId'");
-                    return;
-                }
-                if (!int.TryParse(configMap.GetValueSafe("index"), out int index))
-                {
-                    Instance.Logger.LogError($"    Missing parameter 'index'");
-                    return;
-                }
-                if (!int.TryParse(configMap.GetValueSafe("orbitAround"), out int orbitAround))
-                {
-                    Instance.Logger.LogError($"    Missing parameter 'orbitAround'");
-                    return;
-                }
-                if (!int.TryParse(configMap.GetValueSafe("orbitIndex"), out int orbitIndex))
-                {
-                    Instance.Logger.LogError($"    Missing parameter 'orbitIndex'");
-                    return;
-                }
-                if (!int.TryParse(configMap.GetValueSafe("number"), out int number))
-                {
-                    Instance.Logger.LogError($"    Missing parameter 'number'");
-                    return;
-                }
-                if (!bool.TryParse(configMap.GetValueSafe("gasGiant"), out bool gasGiant))
-                {
-                    Instance.Logger.LogError($"    Missing parameter 'gasGiant'");
-                    return;
-                }
-                if (!int.TryParse(configMap.GetValueSafe("info_seed"), out int infoSeed))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'info_seed', pick default value: {DEFAULT_INFO_SEED}");
-                    infoSeed = DEFAULT_INFO_SEED;
-                }
-                if (!int.TryParse(configMap.GetValueSafe("gen_seed"), out int genSeed))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'gen_seed', pick default value: {DEFAULT_GEN_SEED}");
-                    genSeed = DEFAULT_GEN_SEED;
-                }
-                if (!bool.TryParse(configMap.GetValueSafe("forcePlanetRadius"), out bool forcePlanetRadius))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'forcePlanetRadius', pick default value: {DEFAULT_FORCE_PLANET_RADIUS}");
-                    forcePlanetRadius = DEFAULT_FORCE_PLANET_RADIUS;
-                }
-                if (!float.TryParse(configMap.GetValueSafe("planetRadius"), out float planetRadius))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'planetRadius', pick default value: {DEFAULT_PLANET_RADIUS}");
-                    planetRadius = DEFAULT_PLANET_RADIUS;
-                }
-                if (planetRadius > MAX_PLANET_RADIUS)
-                {
-                    if (!forcePlanetRadius)
-                    {
-                        Instance.Logger.LogError($"    Current max planet radius is {MAX_PLANET_RADIUS}, use 'forcePlanetRadius=true' to override this");
-                        return;
-                    }
-                    else
-                    {
-                        Instance.Logger.LogWarning($"    Force planet radius: {planetRadius}");
-                    }
-                }
-                if (!float.TryParse(configMap.GetValueSafe("orbitalPeriod"), out float orbitalPeriod))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'orbitalPeriod', pick default value: {DEFAULT_ORBITAL_PERIOD}");
-                    orbitalPeriod = DEFAULT_ORBITAL_PERIOD;
-                }
-                if (!float.TryParse(configMap.GetValueSafe("rotationPeriod"), out float rotationPeriod))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'rotationPeriod', pick default value: {DEFAULT_ROTATION_PERIOD}");
-                    rotationPeriod = DEFAULT_ROTATION_PERIOD;
-                }
-                if (!bool.TryParse(configMap.GetValueSafe("isTidalLocked"), out bool isTidalLocked))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'isTidalLocked', pick default value: {DEFAULT_IS_TIDAL_LOCKED}");
-                    isTidalLocked = DEFAULT_IS_TIDAL_LOCKED;
-                }
-                if (!float.TryParse(configMap.GetValueSafe("orbitInclination"), out float orbitInclination))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'orbitInclination', pick default value: {DEFAULT_ORBIT_INCLINATION}");
-                    orbitInclination = DEFAULT_ORBIT_INCLINATION;
-                }
-
-                float orbitLongitude = ORBIT_LONGITUDE_NOT_SPECIFIED;
-                if (configMap.ContainsKey("orbitLongitude"))
-                {
-                    string orbitLongitudeString = configMap["orbitLongitude"];
-                    if (string.IsNullOrWhiteSpace(orbitLongitudeString))
-                    {
-                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
-                        return;
-                    }
-
-                    string[] orbitLongitudeStrings = orbitLongitudeString.Split(',');
-                    if (orbitLongitudeStrings.Length != 2)
-                    {
-                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
-                        return;
-                    }
-
-                    if (!float.TryParse(orbitLongitudeStrings[0].Trim(), out float orbitLongitudeDegree))
-                    {
-                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
-                        return;
-                    }
-
-                    if (!float.TryParse(orbitLongitudeStrings[1].Trim(), out float orbitLongitudeMinute))
-                    {
-                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' has invalid value, correct format is 'DEGREE,MINUTE', e.g. '60,60'");
-                        return;
-                    }
-
-                    orbitLongitude = orbitLongitudeDegree + orbitLongitudeMinute / 60f;
-                    if (orbitLongitude >= 360f)
-                    {
-                        orbitLongitude = Mathf.Repeat(orbitLongitude, 360f);
-                    }
-                    else if (orbitLongitude < 0f)
-                    {
-                        Instance.Logger.LogError($"    Parameter 'orbitLongitude' must be positive");
-                        return;
-                    }
-                }
-
-                if (!float.TryParse(configMap.GetValueSafe("obliquity"), out float obliquity))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'obliquity', pick default value: {DEFAULT_OBLIQUITY}");
-                    obliquity = DEFAULT_ORBIT_INCLINATION;
-                }
-                if (!bool.TryParse(configMap.GetValueSafe("dontGenerateVein"), out bool dontGenerateVein))
-                {
-                    Instance.Logger.LogInfo($"    Missing parameter 'dontGenerateVein', pick default value: {DEFAULT_DONT_GENERATE_VEIN}");
-                    dontGenerateVein = DEFAULT_DONT_GENERATE_VEIN;
-                }
-                int theme = THEME_NOT_SPECIFIED;
-                if (configMap.ContainsKey("theme"))
-                {
-                    if (!int.TryParse(configMap.GetValueSafe("theme"), out theme))
-                    {
-                        Instance.Logger.LogError($"    Invalid parameter 'theme', this parameter must be a positive integer");
-                        return;
-                    }
-                    else if (!LDB.themes.Exist(theme))
-                    {
-                        Instance.Logger.LogError($"    Fail to find theme #{theme} in game data");
-                        return;
-                    }
-                    else if (LDB.themes.Select(theme) == null)
-                    {
-                        Instance.Logger.LogError($"    Theme exists but is null, theme id: {theme}");
-                        return;
-                    }
-                }
-
-                AdditionalPlanetConfig config = new AdditionalPlanetConfig();
-                config.Index = index;
-                config.OrbitAround = orbitAround;
-                config.OrbitIndex = orbitIndex;
-                config.Number = number;
-                config.GasGiant = gasGiant;
-                config.InfoSeed = infoSeed;
-                config.GenSeed = genSeed;
-                config.Radius = planetRadius;
-                config.OrbitalPeriod = orbitalPeriod;
-                config.RotationPeriod = rotationPeriod;
-                config.IsTidalLocked = isTidalLocked;
-                config.OrbitInclination = orbitInclination;
-                config.Obliquity = obliquity;
-                config.DontGenerateVein = dontGenerateVein;
-                config.ThemeId = theme;
-                config.OrbitLongitude = orbitLongitude;
-
-                if (!additionalPlanets.ContainsKey(uniqueStarId))
-                {
-                    additionalPlanets[uniqueStarId] = new List<AdditionalPlanetConfig>();
-                }
-
-                additionalPlanets[uniqueStarId].Add(config);
-
-                Instance.Logger.LogInfo($"新增行星：{uniqueStarId}: {config}");
-            }
         }
 
         /// <summary>
@@ -408,7 +112,7 @@ namespace DSPAddPlanet
             [HarmonyPrefix, HarmonyPatch(typeof(GameData), nameof(GameData.Import))]
             static void GameData_Import_Prefix ()
             {
-                Instance.TryReadConfig();
+                Instance.additionalPlanets = ConfigUtility.ReadConfig();
             }
         }
 
@@ -433,8 +137,6 @@ namespace DSPAddPlanet
                     return;
                 }
 
-                Instance.Logger.LogInfo($"位置 {uniqueStarId} 有新增行星");
-
                 // 需要新增的行星
                 List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
 
@@ -453,10 +155,13 @@ namespace DSPAddPlanet
                 // 创建新的行星
                 foreach (AdditionalPlanetConfig config in configList)
                 {
-                    Instance.Logger.LogInfo($"    {config}");
+                    // 阶段：创建行星
                     PlanetData planet = PlanetGen.CreatePlanet(galaxy, star, gameDesc.savedThemeIds, config.Index, config.OrbitAround, config.OrbitIndex, config.Number, config.GasGiant, config.InfoSeed, config.GenSeed);
 
-                    // 增大行星半径
+                    Instance.Logger.LogInfo($"Created new planet at {uniqueStarId}. Index: {config.Index}, Number: {config.Number}, Orbit index: {config.OrbitIndex}, Gas giant: {config.GasGiant}, Theme id: {config.ThemeId}");
+
+                    // 阶段：后处理
+                    // 调整行星半径
                     if (!config.GasGiant)
                     {
                         planet.radius = config.Radius;
@@ -485,23 +190,26 @@ namespace DSPAddPlanet
                     planet.runtimeSystemRotation = planet.runtimeOrbitRotation * Quaternion.AngleAxis(planet.obliquity, Vector3.forward);
 
                     // 升交点经度
-                    if (planet.orbitInclination >= 0)
+                    if (config._HasOrbitLongitude)
                     {
-                        planet.orbitLongitude = 180f - config.OrbitLongitude;
+                        if (planet.orbitInclination >= 0)
+                        {
+                            planet.orbitLongitude = 180f - config.OrbitLongitude;
+                        }
+                        else
+                        {
+                            planet.orbitLongitude = -config.OrbitLongitude;
+                        }
+                        planet.runtimeOrbitRotation = Quaternion.AngleAxis(planet.orbitLongitude, Vector3.up) * Quaternion.AngleAxis(planet.orbitInclination, Vector3.forward);
+                        if (planet.orbitAroundPlanet != null)
+                        {
+                            planet.runtimeOrbitRotation = planet.orbitAroundPlanet.runtimeOrbitRotation * planet.runtimeOrbitRotation;
+                        }
+                        planet.runtimeSystemRotation = planet.runtimeOrbitRotation * Quaternion.AngleAxis(planet.obliquity, Vector3.forward);
                     }
-                    else
-                    {
-                        planet.orbitLongitude = -config.OrbitLongitude;
-                    }
-                    planet.runtimeOrbitRotation = Quaternion.AngleAxis(planet.orbitLongitude, Vector3.up) * Quaternion.AngleAxis(planet.orbitInclination, Vector3.forward);
-                    if (planet.orbitAroundPlanet != null)
-                    {
-                        planet.runtimeOrbitRotation = planet.orbitAroundPlanet.runtimeOrbitRotation * planet.runtimeOrbitRotation;
-                    }
-                    planet.runtimeSystemRotation = planet.runtimeOrbitRotation * Quaternion.AngleAxis(planet.obliquity, Vector3.forward);
 
                     // 行星主题（逻辑源自 PlanetGen.SetPlanetTheme ）
-                    if (config.ThemeId != THEME_NOT_SPECIFIED)
+                    if (config._HasThemeId)
                     {
                         ThemeProto theme = LDB.themes.Select(config.ThemeId);
                         DotNet35Random random = new DotNet35Random(config.InfoSeed);
@@ -567,8 +275,48 @@ namespace DSPAddPlanet
         /// </summary>
         class Patch_PlanetAlgorithms
         {
+            static DotNet35Random random = new DotNet35Random();
+
+            // GenerateVeins Prefix 开始
+            // 阶段：矿脉生成Prefix
+            // 主要影响矿脉是否生成
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
             static bool PlanetAlgorithm_GenerateVeins_Prefix (PlanetAlgorithm __instance)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm), __instance);
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
+            static bool PlanetAlgorithm0_GenerateVeins_Prefix (PlanetAlgorithm0 __instance)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm0), __instance);
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
+            static bool PlanetAlgorithm7_GenerateVeins_Prefix (PlanetAlgorithm7 __instance)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm7), __instance);
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
+            static bool PlanetAlgorithm11_GenerateVeins_Prefix (PlanetAlgorithm11 __instance)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm11), __instance);
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
+            static bool PlanetAlgorithm12_GenerateVeins_Prefix (PlanetAlgorithm12 __instance)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm12), __instance);
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
+            static bool PlanetAlgorithm13_GenerateVeins_Prefix (PlanetAlgorithm13 __instance)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm13), __instance);
+            }
+
+            static bool PlanetAlgorithmX_GenerateVeins_Prefix (Type type, object instance)
             {
                 if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
                 {
@@ -576,10 +324,8 @@ namespace DSPAddPlanet
                     return true;
                 }
 
-                PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm), "planet").GetValue(__instance);
+                PlanetData planet = (PlanetData)AccessTools.Field(type, "planet").GetValue(instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                Instance.Logger.LogInfo($"正在生成矿脉，恒星：{uniqueStarId}，行星：{planet.name}");
 
                 if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
                 {
@@ -610,201 +356,450 @@ namespace DSPAddPlanet
                 // 虽然该恒星有新增行星，但当前正在生成矿脉的行星还不是新的行星
                 return true;
             }
+            // GenerateVeins Prefix 结束
 
-            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
-            static bool PlanetAlgorithm0_GenerateVeins_Prefix (PlanetAlgorithm0 __instance)
+            // GenerateVeins PostFix 开始
+            // 阶段：矿脉生成Postfix
+            // 主要使 ReplaceAllVeinsTo 发挥作用
+            [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
+            static void PlanetAlgorithm_GenerateVeins_Postfix (PlanetAlgorithm __instance, bool sketchOnly)
+            {
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm), __instance, sketchOnly);
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
+            static void PlanetAlgorithm0_GenerateVeins_Postfix (PlanetAlgorithm0 __instance, bool sketchOnly)
+            {
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm0), __instance, sketchOnly);
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
+            static void PlanetAlgorithm7_GenerateVeins_Postfix (PlanetAlgorithm7 __instance, bool sketchOnly)
+            {
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm7), __instance, sketchOnly);
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
+            static void PlanetAlgorithm11_GenerateVeins_Postfix (PlanetAlgorithm11 __instance, bool sketchOnly)
+            {
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm11), __instance, sketchOnly);
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
+            static void PlanetAlgorithm12_GenerateVeins_Postfix (PlanetAlgorithm12 __instance, bool sketchOnly)
+            {
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm12), __instance, sketchOnly);
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
+            static void PlanetAlgorithm13_GenerateVeins_Postfix (PlanetAlgorithm13 __instance, bool sketchOnly)
+            {
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm13), __instance, sketchOnly);
+            }
+
+            static void PlanetAlgorithmX_GenerateVeins_Postfix (Type type, object instance, bool sketchOnly)
             {
                 if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
                 {
-                    return true;
+                    // 如果没有配置文件的话，不对游戏进行任何修改
+                    return;
                 }
 
-                PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm0), "planet").GetValue(__instance);
+                PlanetData planet = (PlanetData)AccessTools.Field(type, "planet").GetValue(instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                Instance.Logger.LogInfo($"正在生成矿脉，恒星：{uniqueStarId}，行星：{planet.name}");
 
                 if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
                 {
-                    return true;
+                    // 如果这个恒星没有新增的行星，则不考虑是否修改矿脉
+                    return;
                 }
 
                 List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
-                    if (config.Index != planet.index)
+                    if (config.Index != planet.index || !config._HasReplaceAllVeinsTo)
                     {
                         continue;
                     }
 
-                    if (!config.DontGenerateVein)
+                    if (planet.index == config.Index)
                     {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
+                        long amountSum = 0;
+
+                        for (int i = 0; i < planet.veinGroups.Length; ++i)
+                        {
+                            planet.veinGroups[i].type = config.ReplaceAllVeinsTo;
+                            amountSum += planet.veinGroups[i].amount;
+                        }
+
+                        for (int i = 0; i < planet.veinAmounts.Length; ++i)
+                        {
+                            planet.veinAmounts[i] = 0;
+                        }
+                        planet.veinAmounts[(uint)config.ReplaceAllVeinsTo] = amountSum;
+
+                        if (!sketchOnly)
+                        {
+                            DotNet35Random dotNet35Random = new DotNet35Random(planet.seed);
+                            int[] veinModelIndexs = PlanetModelingManager.veinModelIndexs;
+                            int[] veinModelCounts = PlanetModelingManager.veinModelCounts;
+                            int[] veinProducts = PlanetModelingManager.veinProducts;
+                            int veinTypeIndex = (int)config.ReplaceAllVeinsTo;
+
+                            PlanetRawData raw = planet.data;
+                            VeinData[] veinDatas = raw.veinPool;
+                            for (int i = 0; i < veinDatas.Length; ++i)
+                            {
+                                if (veinDatas[i].id != 0)
+                                {
+                                    veinDatas[i].type = config.ReplaceAllVeinsTo;
+                                    veinDatas[i].modelIndex = (short)dotNet35Random.Next(veinModelIndexs[veinTypeIndex], veinModelIndexs[veinTypeIndex] + veinModelCounts[veinTypeIndex]);
+                                    veinDatas[i].productId = veinProducts[veinTypeIndex];
+                                }
+                            }
+                        }
                     }
                 }
 
-                return true;
+                // 虽然该恒星有新增行星，但当前行星还不是新的行星
+                return;
+            }
+            // GenerateVeins PostFix 结束
+
+            // GenerateVeins Transpiler 开始
+            // 阶段：矿脉生成Transpiler
+            // 主要使 VeinCustom 发挥作用
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
+            static IEnumerable<CodeInstruction> PlanetAlgorithm_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm), instructions, generator);
             }
 
-            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
-            static bool PlanetAlgorithm7_GenerateVeins_Prefix (PlanetAlgorithm7 __instance)
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
+            static IEnumerable<CodeInstruction> PlanetAlgorithm7_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
             {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm7), instructions, generator);
+            }
+
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
+            static IEnumerable<CodeInstruction> PlanetAlgorithm11_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm11), instructions, generator);
+            }
+
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
+            static IEnumerable<CodeInstruction> PlanetAlgorithm12_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm12), instructions, generator);
+            }
+
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
+            static IEnumerable<CodeInstruction> PlanetAlgorithm13_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm13), instructions, generator);
+            }
+
+            static IEnumerable<CodeInstruction> PlanetAlgorithmX_GenerateVeins_Transpiler (Type type, IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                CodeMatcher matcher = new CodeMatcher(instructions);
+
+                // 一、初始化随机数生成器
+                matcher.Start();
+                matcher.Insert(
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PlanetAlgorithm), "planet")),
+                    new CodeInstruction(OpCodes.Call, typeof(Patch_PlanetAlgorithms).GetMethod("InitializeRandomGenerator", BindingFlags.Static | BindingFlags.NonPublic))
+                );
+
+                // 二、修改各类矿物的矿脉数量
+                // 寻找第一个 conv.u1 指令（把数字转换为枚举的指令）
+                matcher.MatchForward(true, new CodeMatch(OpCodes.Conv_U1));
+                if (matcher.IsInvalid)
                 {
-                    return true;
+                    Instance.Logger.LogError($"PlanetAlgorithmX_GenerateVeins_Transpiler：无法在{type.Name}的GenerateVeins函数中找到指令conv.u1");
+                    return instructions;
                 }
 
-                PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm7), "planet").GetValue(__instance);
+                // 找到枚举变量的索引
+                matcher.Advance(1); // stloc.s 36
+                int stage2_eVeinType_index = ((LocalBuilder)matcher.Operand).LocalIndex;
+
+                // 寻找形如 if (A > 1) 的代码，记录其中本地变量 A （ num11 ，当前种类的矿物有多少个矿脉）的索引，记录 Ble 指令的位置
+                matcher.MatchForward(false,
+                    new CodeMatch(OpCodes.Ldloc_S),
+                    new CodeMatch(OpCodes.Ldc_I4_1),
+                    new CodeMatch(OpCodes.Ble)
+                );
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError($"PlanetAlgorithmX_GenerateVeins_Transpiler：无法在{type.Name}的GenerateVeins函数中找到形如 if (A > 1) 的代码");
+                    return instructions;
+                }
+
+                int stage2_num11_index = ((LocalBuilder)matcher.Operand).LocalIndex;
+
+                matcher.Advance(2);
+                int stage2_ble_position = matcher.Pos;
+
+                // 寻找 for 循环的开头，形如 for (int A = 0; 的代码
+                matcher.MatchForward(false,
+                    new CodeMatch(OpCodes.Ldc_I4_0),
+                    new CodeMatch(OpCodes.Stloc_S),
+                    new CodeMatch(OpCodes.Br)
+                );
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError($"PlanetAlgorithmX_GenerateVeins_Transpiler：无法在{type.Name}的GenerateVeins函数中找到正确的for循环的头部代码");
+                    return instructions;
+                }
+
+                // 调用 GetVeinGroupCount ，然后将返回值重新赋予 num11
+                matcher.Insert(
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PlanetAlgorithm), "planet")),
+                    new CodeInstruction(OpCodes.Ldloc_S, stage2_eVeinType_index),
+                    new CodeInstruction(OpCodes.Ldloc_S, stage2_num11_index),
+                    new CodeInstruction(OpCodes.Call, typeof(Patch_PlanetAlgorithms).GetMethod("GetVeinGroupCount", BindingFlags.Static | BindingFlags.NonPublic)),
+                    new CodeInstruction(OpCodes.Stloc_S, stage2_num11_index)
+                );
+
+                // 上述 if (A > 1) 的代码，其跳转语句应该跳转到刚刚插入的代码的开头，而不是 for 循环的开头
+                Label stage2_newBranchTarget = generator.DefineLabel();
+                matcher.Instruction.labels.Add(stage2_newBranchTarget);
+                matcher.Start();
+                matcher.Advance(stage2_ble_position);
+                matcher.SetOperandAndAdvance(stage2_newBranchTarget);
+
+                // 三、修改每个矿脉中矿点的数量
+                // 寻找形如 if (A == EVeinType.Oil) { B = 1; } 的代码，
+                // 记录其中本地变量 A （ eVeinType2 ，当前矿脉的矿物类型）和 B （ num19 ，矿脉中矿点数量）的索引，并为其中的本地变量 B 重新赋值
+                matcher.MatchForward(false,
+                    new CodeMatch(OpCodes.Ldloc_S), // A
+                    new CodeMatch(OpCodes.Ldc_I4_7), // EVeinType.Oil
+                    new CodeMatch(OpCodes.Bne_Un), // 相等
+                    new CodeMatch(OpCodes.Ldc_I4_1), // 1
+                    new CodeMatch(OpCodes.Stloc_S) // B 赋值
+                );
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError($"PlanetAlgorithmX_GenerateVeins_Transpiler：无法在{type.Name}的GenerateVeins函数中找到正确的给矿脉中矿点数量赋值的代码");
+                    return instructions;
+                }
+
+                int stage3_eVeinType2_index = ((LocalBuilder)matcher.Operand).LocalIndex;
+
+                matcher.Advance(4);
+                int stage3_num19_index = ((LocalBuilder)matcher.Operand).LocalIndex;
+
+                // 重新回到刚刚插入的代码的开头，函数调用需要插入在 if 语句之前
+                matcher.Advance(-4);
+
+                // 调用 GetVeinCount ，然后将返回值重新赋予 num11
+                matcher.Insert(
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PlanetAlgorithm), "planet")),
+                    new CodeInstruction(OpCodes.Ldloc_S, stage3_eVeinType2_index),
+                    new CodeInstruction(OpCodes.Ldloc_S, stage3_num19_index),
+                    new CodeInstruction(OpCodes.Call, typeof(Patch_PlanetAlgorithms).GetMethod("GetVeinCount", BindingFlags.Static | BindingFlags.NonPublic)),
+                    new CodeInstruction(OpCodes.Stloc_S, stage3_num19_index)
+                );
+
+                // 四、修改每个矿点中矿物的数量
+                // 寻找形如 if (A && B.type != EVeinType.Oil) { B.amount = 1000000000; } 的代码，
+                // 记录其中 brfalse 和 beq 指令的索引。
+                // 这段代码应该是最后一处对 vein.amount 进行赋值的代码
+                matcher.MatchForward(false,
+                    new CodeMatch(OpCodes.Ldloc_S),
+                    new CodeMatch(OpCodes.Brfalse),
+                    new CodeMatch(OpCodes.Ldloc_S),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Ldfld && instruction.operand.ToString() == "EVeinType type"),
+                    new CodeMatch(OpCodes.Ldc_I4_7),
+                    new CodeMatch(OpCodes.Beq),
+                    new CodeMatch(OpCodes.Ldloca_S),
+                    new CodeMatch(OpCodes.Ldc_I4, 1000000000),
+                    new CodeMatch(instruction => instruction.opcode == OpCodes.Stfld && instruction.operand.ToString() == "System.Int32 amount")
+                );
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError($"PlanetAlgorithmX_GenerateVeins_Transpiler：无法在{type.Name}的GenerateVeins函数中找到最后一处给矿脉中矿点矿物数量赋值的代码");
+                    return instructions;
+                }
+
+                matcher.Advance(1);
+                int stage4_brfalse_position = matcher.Pos;
+
+                matcher.Advance(4);
+                int stage4_beq_position = matcher.Pos;
+
+                // 找到本地变量 vein 的索引
+                matcher.Advance(1);
+                int stage4_vein_index = ((LocalBuilder)matcher.Operand).LocalIndex;
+
+                // 移动到 if 语句的末尾
+                matcher.Advance(3);
+
+                // 调用 GetVeinAmount ，然后将返回值重新赋给 vein.amount
+                matcher.Insert(
+                    new CodeInstruction(OpCodes.Ldloca_S, stage4_vein_index),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PlanetAlgorithm), "planet")),
+                    new CodeInstruction(OpCodes.Ldloc_S, stage3_eVeinType2_index),
+                    new CodeInstruction(OpCodes.Ldloc_S, stage4_vein_index),
+                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(VeinData), "amount")),
+                    new CodeInstruction(OpCodes.Call, typeof(Patch_PlanetAlgorithms).GetMethod("GetVeinAmount", BindingFlags.Static | BindingFlags.NonPublic)),
+                    new CodeInstruction(OpCodes.Stfld, AccessTools.Field(typeof(VeinData), "amount"))
+                );
+
+                // 将该段代码移出 if 语句块
+                Label stage4_newBranchTarget = generator.DefineLabel();
+                matcher.Instruction.labels.Add(stage4_newBranchTarget);
+                matcher.Start();
+                matcher.Advance(stage4_brfalse_position);
+                matcher.SetOperandAndAdvance(stage4_newBranchTarget);
+                matcher.Start();
+                matcher.Advance(stage4_beq_position);
+                matcher.SetOperandAndAdvance(stage4_newBranchTarget);
+
+                return matcher.InstructionEnumeration();
+            }
+
+            static void InitializeRandomGenerator (PlanetData planet)
+            {
+                random = new DotNet35Random(planet.seed);
+            }
+
+            static int GetVeinGroupCount (PlanetAlgorithm _, PlanetData planet, EVeinType veinType, int originalValue)
+            {
+                if (Instance.additionalPlanets.Count == 0)
+                {
+                    return originalValue;
+                }
+
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                Instance.Logger.LogInfo($"正在生成矿脉，恒星：{uniqueStarId}，行星：{planet.name}");
-
                 if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
                 {
-                    return true;
+                    return originalValue;
                 }
 
                 List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
-                    if (config.Index != planet.index)
+                    if (config.Index != planet.index || !config._HasVeinCustom || !config.VeinCustom.ContainsKey(veinType))
                     {
                         continue;
                     }
 
-                    if (!config.DontGenerateVein)
+                    AdditionalPlanetConfig.VeinConfig.CustomValue customValue = config.VeinCustom[veinType].VeinGroupCount;
+
+                    if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Default)
                     {
-                        return true;
+                        //Instance.Logger.LogInfo($"Modify vein group count at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Default");
+                        return originalValue;
                     }
-                    else
+                    else if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Accurate)
                     {
-                        return false;
+                        //Instance.Logger.LogInfo($"Modify vein group count at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Accurate, value: {customValue.AccurateValue}");
+                        return customValue.AccurateValue;
+                    }
+                    else if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Random)
+                    {
+                        int value = customValue.GetRandomResult(random);
+                        //Instance.Logger.LogInfo($"Modify vein group count at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Random, value: {value}");
+                        return value;
                     }
                 }
-
-                return true;
+                return originalValue;
             }
 
-            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
-            static bool PlanetAlgorithm11_GenerateVeins_Prefix (PlanetAlgorithm11 __instance)
+            static int GetVeinCount (PlanetAlgorithm _, PlanetData planet, EVeinType veinType, int originalValue)
             {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                if (Instance.additionalPlanets.Count == 0)
                 {
-                    return true;
+                    return originalValue;
                 }
 
-                PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm11), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                Instance.Logger.LogInfo($"正在生成矿脉，恒星：{uniqueStarId}，行星：{planet.name}");
-
                 if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
                 {
-                    return true;
+                    return originalValue;
                 }
 
                 List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
-                    if (config.Index != planet.index)
+                    if (config.Index != planet.index || !config._HasVeinCustom || !config.VeinCustom.ContainsKey(veinType))
                     {
                         continue;
                     }
 
-                    if (!config.DontGenerateVein)
+                    AdditionalPlanetConfig.VeinConfig.CustomValue customValue = config.VeinCustom[veinType].VeinSpotCount;
+
+                    if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Default)
                     {
-                        return true;
+                        //Instance.Logger.LogInfo($"Modify vein count at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Default");
+                        return originalValue;
                     }
-                    else
+                    else if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Accurate)
                     {
-                        return false;
+                        //Instance.Logger.LogInfo($"Modify vein count at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Accurate, value: {customValue.AccurateValue}");
+                        return customValue.AccurateValue;
+                    }
+                    else if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Random)
+                    {
+                        int value = customValue.GetRandomResult(random);
+                        //Instance.Logger.LogInfo($"Modify vein count at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Random, value: {value}");
+                        return value;
                     }
                 }
-
-                return true;
+                return originalValue;
             }
 
-            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
-            static bool PlanetAlgorithm12_GenerateVeins_Prefix (PlanetAlgorithm12 __instance)
+            static int GetVeinAmount (PlanetAlgorithm _, PlanetData planet, EVeinType veinType, int originalValue)
             {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                if (Instance.additionalPlanets.Count == 0)
                 {
-                    return true;
+                    return originalValue;
                 }
 
-                PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm12), "planet").GetValue(__instance);
                 string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                Instance.Logger.LogInfo($"正在生成矿脉，恒星：{uniqueStarId}，行星：{planet.name}");
-
                 if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
                 {
-                    return true;
+                    return originalValue;
                 }
 
                 List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
-                    if (config.Index != planet.index)
+                    if (config.Index != planet.index || !config._HasVeinCustom || !config.VeinCustom.ContainsKey(veinType))
                     {
                         continue;
                     }
 
-                    if (!config.DontGenerateVein)
+                    AdditionalPlanetConfig.VeinConfig.CustomValue customValue = config.VeinCustom[veinType].VeinAmount;
+
+                    if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Default)
                     {
-                        return true;
+                        //Instance.Logger.LogInfo($"Modify vein amount at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Default");
+                        return originalValue;
                     }
-                    else
+                    else if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Accurate)
                     {
-                        return false;
+                        //Instance.Logger.LogInfo($"Modify vein amount at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Accurate, value: {customValue.AccurateValue}");
+                        return customValue.AccurateValue;
+                    }
+                    else if (customValue.Type == AdditionalPlanetConfig.VeinConfig.CustomValue.CustomType.Random)
+                    {
+                        int value = customValue.GetRandomResult(random);
+                        //Instance.Logger.LogInfo($"Modify vein amount at {uniqueStarId}, planet index: {planet.index}, vein type: {veinType}, custom type: Random, value: {value}");
+                        return value;
                     }
                 }
-
-                return true;
+                return originalValue;
             }
-
-            [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
-            static bool PlanetAlgorithm13_GenerateVeins_Prefix (PlanetAlgorithm13 __instance)
-            {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
-                {
-                    return true;
-                }
-
-                PlanetData planet = (PlanetData)AccessTools.Field(typeof(PlanetAlgorithm13), "planet").GetValue(__instance);
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                Instance.Logger.LogInfo($"正在生成矿脉，恒星：{uniqueStarId}，行星：{planet.name}");
-
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
-                {
-                    return true;
-                }
-
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
-                foreach (AdditionalPlanetConfig config in configList)
-                {
-                    if (config.Index != planet.index)
-                    {
-                        continue;
-                    }
-
-                    if (!config.DontGenerateVein)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
+            // GenerateVeins Transpiler 结束
         }
 
         /// <summary>
@@ -1272,6 +1267,58 @@ namespace DSPAddPlanet
             static float GetLocalPlanetRadius ()
             {
                 return GameMain.localPlanet.realRadius;
+            }
+        }
+
+        /// <summary>
+        /// 修复由于行星半径过大导致的若干问题
+        /// </summary>
+        class Patch_PlanetFactory
+        {
+            [HarmonyTranspiler, HarmonyPatch(typeof(PlanetFactory), nameof(PlanetFactory.FlattenTerrain))]
+            static IEnumerable<CodeInstruction> PlanetFactory_FlattenTerrain_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                LocalBuilder intNum5 = generator.DeclareLocal(typeof(int));
+
+                CodeMatcher matcher = new CodeMatcher(instructions);
+
+                // 找到形如 (short)(A * 100f + 20f) 的代码
+                matcher.MatchForward(true,
+                    new CodeMatch(OpCodes.Ldc_R4, 100f),
+                    new CodeMatch(OpCodes.Mul),
+                    new CodeMatch(OpCodes.Ldc_R4, 20f),
+                    new CodeMatch(OpCodes.Add),
+                    new CodeMatch(OpCodes.Conv_I2),
+                    new CodeMatch(OpCodes.Stloc_S)
+                );
+
+                if (matcher.IsInvalid)
+                {
+                    Instance.Logger.LogError("PlanetFactory_FlattenTerrain_Transpiler: matcher.IsInvalid");
+                    return instructions;
+                }
+
+                // 记录原来被赋值的变量的索引
+                int oldNum5Index = ((LocalBuilder)matcher.Operand).LocalIndex;
+
+                // 将值赋给新的本地变量
+                matcher.Advance(-1);
+                matcher.SetOpcodeAndAdvance(OpCodes.Conv_I4); // conv.i2 -> conv.i4
+                matcher.SetAndAdvance(OpCodes.Stloc_S, intNum5.LocalIndex); // stloc.s 13 -> stloc.s intNum5
+
+                // 寻找读取旧变量的地方，并将其替换成新的本地变量
+                while (matcher.IsValid)
+                {
+                    matcher.MatchForward(true, new CodeMatch(
+                        instruction => instruction.opcode == OpCodes.Ldloc_S && ((LocalBuilder)instruction.operand).LocalIndex == oldNum5Index
+                    ));
+                    if (matcher.IsValid)
+                    {
+                        matcher.SetAndAdvance(OpCodes.Ldloc_S, intNum5.LocalIndex);
+                    }
+                }
+
+                return matcher.InstructionEnumeration();
             }
         }
 
