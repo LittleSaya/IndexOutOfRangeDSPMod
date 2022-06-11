@@ -328,11 +328,19 @@ Careful about the name of your save file when you save your game because new pla
 
 ## Compatibility
 
+### 0.1.1
+
+Build target: game version 0.9.26.12900, BepInEx version: 5.4.19 (should work under 5.4.17)
+
 ### 0.0.1 ~ 0.1.0
 
 Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
 
 ## Change log
+
+### 0.1.0 -> 0.1.1
+
+- Compatibility with game version 0.9.26.12900
 
 ### 0.0.12 -> 0.1.0
 

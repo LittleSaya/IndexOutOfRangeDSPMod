@@ -21,7 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.1.0";
+        public const string PLUGIN_VERSION = "0.1.1";
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
@@ -168,7 +168,7 @@ namespace DSPAddPlanet
                         planet.scale = 1f;
                         planet.precision = 200;
                         planet.segment = 5;
-                        star.galaxy.astroPoses[planet.id].uRadius = planet.realRadius;
+                        star.galaxy.astrosData[planet.id].uRadius = planet.realRadius;
                     }
 
                     // 潮汐锁定
