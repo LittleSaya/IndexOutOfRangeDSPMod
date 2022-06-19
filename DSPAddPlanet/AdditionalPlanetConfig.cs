@@ -112,6 +112,11 @@ namespace DSPAddPlanet
         /// </summary>
         public EVeinType ReplaceAllVeinsTo;
 
+        /// <summary>
+        /// 是否是出生点
+        /// </summary>
+        public bool IsBirthPoint;
+
         override public string ToString ()
         {
             StringBuilder str = new StringBuilder("AdditionalPlanetConfig:\r\n");
@@ -165,6 +170,7 @@ namespace DSPAddPlanet
             }
             str.Append("    ").Append("_HasReplaceAllVeinsTo: ").Append(_HasReplaceAllVeinsTo).Append("\r\n");
             str.Append("    ").Append("ReplaceAllVeinsTo: ").Append(ReplaceAllVeinsTo).Append("\r\n");
+            str.Append("    ").Append("IsBirthPoint: ").Append(IsBirthPoint).Append("\r\n");
             return str.ToString();
         }
 

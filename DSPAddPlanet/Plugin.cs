@@ -21,16 +21,31 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.1.1";
+        public const string PLUGIN_VERSION = "0.2.0";
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
         new public ManualLogSource Logger { get => base.Logger; }
 
         /// <summary>
-        /// 所有需要新增的星球，List中的内容是按照配置文件中约定的顺序存储的
+        /// 全局行星配置
         /// </summary>
-        private Dictionary<string, List<AdditionalPlanetConfig>> additionalPlanets = new Dictionary<string, List<AdditionalPlanetConfig>>();
+        private Dictionary<string, List<AdditionalPlanetConfig>> globalPlanetConfig = new Dictionary<string, List<AdditionalPlanetConfig>>();
+
+        /// <summary>
+        /// 针对特定游戏名称的行星配置
+        /// </summary>
+        private Dictionary<string, List<AdditionalPlanetConfig>> gameNameSpecificConfig = new Dictionary<string, List<AdditionalPlanetConfig>>();
+
+        /// <summary>
+        /// 用户指定的出生恒星
+        /// </summary>
+        private int specialBirthStarId = 0;
+
+        /// <summary>
+        /// 用户指定的出生行星
+        /// </summary>
+        private int specialBirthPlanetId = 0;
 
         /// <summary>
         /// UIAddPlanet UI组件
@@ -52,6 +67,7 @@ namespace DSPAddPlanet
 
             // 核心业务功能
             harmony.PatchAll(typeof(Patch_StarGen));
+            harmony.PatchAll(typeof(Patch_UniverseGen));
             harmony.PatchAll(typeof(Patch_PlanetAlgorithms));
 
             // 修正游戏行为
@@ -69,6 +85,8 @@ namespace DSPAddPlanet
             harmony.PatchAll(typeof(Patch_UIGame));
 
             harmony.PatchAll(typeof(Patch_Debug));
+
+            Utility.PrintThemeTable();
         }
 
         /// <summary>
@@ -107,12 +125,13 @@ namespace DSPAddPlanet
         class Patch_GameData
         {
             /// <summary>
-            /// 每次载入存档之前，都重新读取一次配置文件
+            /// 每次载入存档之前，都重新读取一次配置文件，同时清空用户设置的出生点
             /// </summary>
             [HarmonyPrefix, HarmonyPatch(typeof(GameData), nameof(GameData.Import))]
             static void GameData_Import_Prefix ()
             {
-                Instance.additionalPlanets = ConfigUtility.ReadConfig();
+                ConfigUtility.ReadConfig(Instance.globalPlanetConfig, Instance.gameNameSpecificConfig);
+                Instance.specialBirthStarId = Instance.specialBirthPlanetId = 0;
             }
         }
 
@@ -121,24 +140,28 @@ namespace DSPAddPlanet
         /// </summary>
         class Patch_StarGen
         {
+            /// <summary>
+            /// CreateStarPlanets 会为每个恒星调用一次
+            /// </summary>
+            /// <param name="galaxy"></param>
+            /// <param name="star"></param>
+            /// <param name="gameDesc"></param>
             [HarmonyPostfix, HarmonyPatch(typeof(StarGen), nameof(StarGen.CreateStarPlanets))]
             static void StarGen_CreateStarPlanets_Postfix (GalaxyData galaxy, StarData star, GameDesc gameDesc)
             {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
+                List<AdditionalPlanetConfig> configList = Utility.GetPlanetConfigList(
+                    GameMain.gameName,
+                    gameDesc.clusterString,
+                    star.name,
+                    Instance.globalPlanetConfig,
+                    Instance.gameNameSpecificConfig,
+                    out string uniqueStarId
+                );
+                if (configList == null)
                 {
-                    // 如果没有配置文件的话，不对游戏进行任何修改
+                    // 未能获取到当前行星的配置
                     return;
                 }
-
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, gameDesc.clusterString, star.name);
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
-                {
-                    // 指定位置没有新的行星
-                    return;
-                }
-
-                // 需要新增的行星
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
 
                 // 修改行星数量
                 star.planetCount += configList.Count;
@@ -155,10 +178,43 @@ namespace DSPAddPlanet
                 // 创建新的行星
                 foreach (AdditionalPlanetConfig config in configList)
                 {
-                    // 阶段：创建行星
-                    PlanetData planet = PlanetGen.CreatePlanet(galaxy, star, gameDesc.savedThemeIds, config.Index, config.OrbitAround, config.OrbitIndex, config.Number, config.GasGiant, config.InfoSeed, config.GenSeed);
+                    // 检查该配置中的行星index是否是已经存在的行星的index
+                    bool isExistingPlanet = false;
+                    int existingPlanetIndex = 0;
+                    for (int j = 0; j < i; ++j)
+                    {
+                        if (planets[j].index == config.Index)
+                        {
+                            isExistingPlanet = true;
+                            existingPlanetIndex = config.Index;
+                            break;
+                        }
+                    }
 
-                    Instance.Logger.LogInfo($"Created new planet at {uniqueStarId}. Index: {config.Index}, Number: {config.Number}, Orbit index: {config.OrbitIndex}, Gas giant: {config.GasGiant}, Theme id: {config.ThemeId}");
+                    PlanetData planet = null;
+                    if (!isExistingPlanet)
+                    {
+                        // 阶段：创建行星
+                        planet = PlanetGen.CreatePlanet(galaxy, star, gameDesc.savedThemeIds, config.Index, config.OrbitAround, config.OrbitIndex, config.Number, config.GasGiant, config.InfoSeed, config.GenSeed);
+
+                        Instance.Logger.LogInfo($"Created new planet at {uniqueStarId}. Index: {config.Index}, Number: {config.Number}, Orbit index: {config.OrbitIndex}, Gas giant: {config.GasGiant}, Theme id: {config.ThemeId}");
+                    }
+                    else
+                    {
+                        // 获取已经存在的行星
+                        planet = planets[existingPlanetIndex];
+                    }
+
+                    // 检查并更新出生位置
+                    if (config.IsBirthPoint)
+                    {
+                        if (Instance.specialBirthStarId != 0 || Instance.specialBirthPlanetId != 0)
+                        {
+                            Instance.Logger.LogWarning($"Birth point overriding in {uniqueStarId}, from star id {Instance.specialBirthStarId}, planet id {Instance.specialBirthPlanetId}, to star id {planet.star.id}, planet id {planet.id}");
+                        }
+                        Instance.specialBirthStarId = planet.star.id;
+                        Instance.specialBirthPlanetId = planet.id;
+                    }
 
                     // 阶段：后处理
                     // 调整行星半径
@@ -271,6 +327,22 @@ namespace DSPAddPlanet
         }
 
         /// <summary>
+        /// 设置玩家的出生点
+        /// </summary>
+        class Patch_UniverseGen
+        {
+            [HarmonyPostfix, HarmonyPatch(typeof(UniverseGen), nameof(UniverseGen.CreateGalaxy))]
+            static void UniverseGen_CreateGalaxy_Postfix (GalaxyData __result)
+            {
+                if (Instance.specialBirthStarId != 0 && Instance.specialBirthPlanetId != 0)
+                {
+                    __result.birthStarId = Instance.specialBirthStarId;
+                    __result.birthPlanetId = Instance.specialBirthPlanetId;
+                }
+            }
+        }
+
+        /// <summary>
         /// 矿脉与地形
         /// </summary>
         class Patch_PlanetAlgorithms
@@ -318,22 +390,21 @@ namespace DSPAddPlanet
 
             static bool PlanetAlgorithmX_GenerateVeins_Prefix (Type type, object instance)
             {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
-                {
-                    // 如果没有配置文件的话，不对游戏进行任何修改
-                    return true;
-                }
-
                 PlanetData planet = (PlanetData)AccessTools.Field(type, "planet").GetValue(instance);
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
+                List<AdditionalPlanetConfig> configList = Utility.GetPlanetConfigList(
+                    GameMain.gameName,
+                    GameMain.data.gameDesc.clusterString,
+                    planet.star.name,
+                    Instance.globalPlanetConfig,
+                    Instance.gameNameSpecificConfig,
+                    out string _
+                );
+                if (configList == null)
                 {
-                    // 如果这个恒星没有新增的行星，则不考虑是否生成矿脉的配置，执行游戏自带的 GenerateVeins 函数
+                    // 没有针对该恒星的配置，正常生成行星的矿脉
                     return true;
                 }
 
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
                     if (config.Index != planet.index)
@@ -362,59 +433,58 @@ namespace DSPAddPlanet
             // 阶段：矿脉生成Postfix
             // 主要使 ReplaceAllVeinsTo 发挥作用
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
-            static void PlanetAlgorithm_GenerateVeins_Postfix (PlanetAlgorithm __instance, bool sketchOnly)
+            static void PlanetAlgorithm_GenerateVeins_Postfix (PlanetAlgorithm __instance)
             {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm), __instance, sketchOnly);
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm), __instance);
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
-            static void PlanetAlgorithm0_GenerateVeins_Postfix (PlanetAlgorithm0 __instance, bool sketchOnly)
+            static void PlanetAlgorithm0_GenerateVeins_Postfix (PlanetAlgorithm0 __instance)
             {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm0), __instance, sketchOnly);
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm0), __instance);
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
-            static void PlanetAlgorithm7_GenerateVeins_Postfix (PlanetAlgorithm7 __instance, bool sketchOnly)
+            static void PlanetAlgorithm7_GenerateVeins_Postfix (PlanetAlgorithm7 __instance)
             {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm7), __instance, sketchOnly);
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm7), __instance);
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
-            static void PlanetAlgorithm11_GenerateVeins_Postfix (PlanetAlgorithm11 __instance, bool sketchOnly)
+            static void PlanetAlgorithm11_GenerateVeins_Postfix (PlanetAlgorithm11 __instance)
             {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm11), __instance, sketchOnly);
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm11), __instance);
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
-            static void PlanetAlgorithm12_GenerateVeins_Postfix (PlanetAlgorithm12 __instance, bool sketchOnly)
+            static void PlanetAlgorithm12_GenerateVeins_Postfix (PlanetAlgorithm12 __instance)
             {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm12), __instance, sketchOnly);
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm12), __instance);
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
-            static void PlanetAlgorithm13_GenerateVeins_Postfix (PlanetAlgorithm13 __instance, bool sketchOnly)
+            static void PlanetAlgorithm13_GenerateVeins_Postfix (PlanetAlgorithm13 __instance)
             {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm13), __instance, sketchOnly);
+                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm13), __instance);
             }
 
-            static void PlanetAlgorithmX_GenerateVeins_Postfix (Type type, object instance, bool sketchOnly)
+            static void PlanetAlgorithmX_GenerateVeins_Postfix (Type type, object instance)
             {
-                if (Instance.additionalPlanets == null || Instance.additionalPlanets.Count == 0)
-                {
-                    // 如果没有配置文件的话，不对游戏进行任何修改
-                    return;
-                }
-
                 PlanetData planet = (PlanetData)AccessTools.Field(type, "planet").GetValue(instance);
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
+                List<AdditionalPlanetConfig> configList = Utility.GetPlanetConfigList(
+                    GameMain.gameName,
+                    GameMain.data.gameDesc.clusterString,
+                    planet.star.name,
+                    Instance.globalPlanetConfig,
+                    Instance.gameNameSpecificConfig,
+                    out string _
+                );
+                if (configList == null)
                 {
-                    // 如果这个恒星没有新增的行星，则不考虑是否修改矿脉
+                    // 没有针对该恒星的配置，不考虑替换矿脉的情况
                     return;
                 }
 
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
                     if (config.Index != planet.index || !config._HasReplaceAllVeinsTo)
@@ -424,38 +494,22 @@ namespace DSPAddPlanet
 
                     if (planet.index == config.Index)
                     {
-                        long amountSum = 0;
+                        // 替换 PlanetRawData.veinPool 中的内容
+                        DotNet35Random dotNet35Random = new DotNet35Random(planet.seed);
+                        int[] veinModelIndexs = PlanetModelingManager.veinModelIndexs;
+                        int[] veinModelCounts = PlanetModelingManager.veinModelCounts;
+                        int[] veinProducts = PlanetModelingManager.veinProducts;
+                        int replacedVeinTypeIndex = (int)config.ReplaceAllVeinsTo;
 
-                        for (int i = 0; i < planet.veinGroups.Length; ++i)
+                        PlanetRawData raw = planet.data;
+                        VeinData[] veinDatas = raw.veinPool;
+                        for (int i = 0; i < veinDatas.Length; ++i)
                         {
-                            planet.veinGroups[i].type = config.ReplaceAllVeinsTo;
-                            amountSum += planet.veinGroups[i].amount;
-                        }
-
-                        for (int i = 0; i < planet.veinAmounts.Length; ++i)
-                        {
-                            planet.veinAmounts[i] = 0;
-                        }
-                        planet.veinAmounts[(uint)config.ReplaceAllVeinsTo] = amountSum;
-
-                        if (!sketchOnly)
-                        {
-                            DotNet35Random dotNet35Random = new DotNet35Random(planet.seed);
-                            int[] veinModelIndexs = PlanetModelingManager.veinModelIndexs;
-                            int[] veinModelCounts = PlanetModelingManager.veinModelCounts;
-                            int[] veinProducts = PlanetModelingManager.veinProducts;
-                            int veinTypeIndex = (int)config.ReplaceAllVeinsTo;
-
-                            PlanetRawData raw = planet.data;
-                            VeinData[] veinDatas = raw.veinPool;
-                            for (int i = 0; i < veinDatas.Length; ++i)
+                            if (veinDatas[i].id != 0)
                             {
-                                if (veinDatas[i].id != 0)
-                                {
-                                    veinDatas[i].type = config.ReplaceAllVeinsTo;
-                                    veinDatas[i].modelIndex = (short)dotNet35Random.Next(veinModelIndexs[veinTypeIndex], veinModelIndexs[veinTypeIndex] + veinModelCounts[veinTypeIndex]);
-                                    veinDatas[i].productId = veinProducts[veinTypeIndex];
-                                }
+                                veinDatas[i].type = config.ReplaceAllVeinsTo;
+                                veinDatas[i].modelIndex = (short)dotNet35Random.Next(veinModelIndexs[replacedVeinTypeIndex], veinModelIndexs[replacedVeinTypeIndex] + veinModelCounts[replacedVeinTypeIndex]);
+                                veinDatas[i].productId = veinProducts[replacedVeinTypeIndex];
                             }
                         }
                     }
@@ -671,20 +725,30 @@ namespace DSPAddPlanet
                 random = new DotNet35Random(planet.seed);
             }
 
+            /// <summary>
+            /// 获取矿脉数量
+            /// </summary>
+            /// <param name="_"></param>
+            /// <param name="planet"></param>
+            /// <param name="veinType"></param>
+            /// <param name="originalValue"></param>
+            /// <returns></returns>
             static int GetVeinGroupCount (PlanetAlgorithm _, PlanetData planet, EVeinType veinType, int originalValue)
             {
-                if (Instance.additionalPlanets.Count == 0)
+                List<AdditionalPlanetConfig> configList = Utility.GetPlanetConfigList(
+                    GameMain.gameName,
+                    GameMain.data.gameDesc.clusterString,
+                    planet.star.name,
+                    Instance.globalPlanetConfig,
+                    Instance.gameNameSpecificConfig,
+                    out string _
+                );
+                if (configList == null)
                 {
+                    // 没有针对该恒星的配置，直接返回原始值
                     return originalValue;
                 }
 
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
-                {
-                    return originalValue;
-                }
-
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
                     if (config.Index != planet.index || !config._HasVeinCustom || !config.VeinCustom.ContainsKey(veinType))
@@ -714,20 +778,30 @@ namespace DSPAddPlanet
                 return originalValue;
             }
 
+            /// <summary>
+            /// 获取每个矿脉中的矿点数量
+            /// </summary>
+            /// <param name="_"></param>
+            /// <param name="planet"></param>
+            /// <param name="veinType"></param>
+            /// <param name="originalValue"></param>
+            /// <returns></returns>
             static int GetVeinCount (PlanetAlgorithm _, PlanetData planet, EVeinType veinType, int originalValue)
             {
-                if (Instance.additionalPlanets.Count == 0)
+                List<AdditionalPlanetConfig> configList = Utility.GetPlanetConfigList(
+                    GameMain.gameName,
+                    GameMain.data.gameDesc.clusterString,
+                    planet.star.name,
+                    Instance.globalPlanetConfig,
+                    Instance.gameNameSpecificConfig,
+                    out string _
+                );
+                if (configList == null)
                 {
+                    // 没有针对该恒星的配置，直接返回原始值
                     return originalValue;
                 }
 
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
-                {
-                    return originalValue;
-                }
-
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
                     if (config.Index != planet.index || !config._HasVeinCustom || !config.VeinCustom.ContainsKey(veinType))
@@ -757,20 +831,30 @@ namespace DSPAddPlanet
                 return originalValue;
             }
 
+            /// <summary>
+            /// 获取每个矿点中的矿物数量
+            /// </summary>
+            /// <param name="_"></param>
+            /// <param name="planet"></param>
+            /// <param name="veinType"></param>
+            /// <param name="originalValue"></param>
+            /// <returns></returns>
             static int GetVeinAmount (PlanetAlgorithm _, PlanetData planet, EVeinType veinType, int originalValue)
             {
-                if (Instance.additionalPlanets.Count == 0)
+                List<AdditionalPlanetConfig> configList = Utility.GetPlanetConfigList(
+                    GameMain.gameName,
+                    GameMain.data.gameDesc.clusterString,
+                    planet.star.name,
+                    Instance.globalPlanetConfig,
+                    Instance.gameNameSpecificConfig,
+                    out string _
+                );
+                if (configList == null)
                 {
+                    // 没有针对该恒星的配置，直接返回原始值
                     return originalValue;
                 }
 
-                string uniqueStarId = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, planet.star.name);
-                if (!Instance.additionalPlanets.ContainsKey(uniqueStarId))
-                {
-                    return originalValue;
-                }
-
-                List<AdditionalPlanetConfig> configList = Instance.additionalPlanets[uniqueStarId];
                 foreach (AdditionalPlanetConfig config in configList)
                 {
                     if (config.Index != planet.index || !config._HasVeinCustom || !config.VeinCustom.ContainsKey(veinType))
@@ -1417,6 +1501,22 @@ namespace DSPAddPlanet
             //{
             //    Instance.Logger.LogInfo("export planet id: " + __instance.planetId);
             //}
+
+            [HarmonyPrefix, HarmonyPatch(typeof(GuideMissionStandardMode), "Init")]
+            static void GuideMissionStandardMode_Init_Prefix (GameData _gameData)
+            {
+                Instance.Logger.LogInfo("GuideMissionStandardMode_Init_PrefixGuideMissionStandardMode_Init_PrefixGuideMissionStandardMode_Init_Prefix");
+                Instance.Logger.LogInfo("___gameData.localPlanet == null=" + (_gameData.localPlanet == null));
+                Instance.Logger.LogInfo("GameCamera.instance == null=" + (GameCamera.instance == null));
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(GameData), "ArrivePlanet")]
+            static void GameData_ArrivePlanet_Prefix (PlanetData planet, GameData __instance)
+            {
+                Instance.Logger.LogInfo("GameData_ArrivePlanet_PrefixGameData_ArrivePlanet_PrefixGameData_ArrivePlanet_Prefix");
+                Instance.Logger.LogInfo("__galaxy.birthPlanetId=" + __instance.galaxy.birthPlanetId);
+                Instance.Logger.LogInfo("planet == null=" + (planet == null));
+            }
         }
     }
 }

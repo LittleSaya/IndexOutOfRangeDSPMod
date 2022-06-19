@@ -115,7 +115,14 @@ namespace DSPAddPlanet
         private void SelectStar (StarData star)
         {
             // 唯一恒星编号
-            uniqueStarIdString = UniqueStarId.text = Utility.UniqueStarId(GameMain.gameName, GameMain.data.gameDesc.clusterString, star.name);
+            if (string.IsNullOrWhiteSpace(GameMain.gameName))
+            {
+                uniqueStarIdString = UniqueStarId.text = Utility.UniqueStarIdWithoutGameName(GameMain.data.gameDesc.clusterString, star.name);
+            }
+            else
+            {
+                uniqueStarIdString = UniqueStarId.text = Utility.UniqueStarIdWithGameName(GameMain.gameName, GameMain.data.gameDesc.clusterString, star.name);
+            }
 
             // 额外行星信息
             StringBuilder extraPlanetsInfo = new StringBuilder();

@@ -19,6 +19,8 @@ namespace DSPAddPlanet
 
         public const string TEXT_CONFIG_FILE = "config.txt";
 
+        public const bool DEFAULT_IS_BIRTH_POINT = false;
+
         public const bool DEFAULT_GAS_GIANT = false;
 
         public const int DEFAULT_INFO_SEED = 0;
@@ -45,8 +47,15 @@ namespace DSPAddPlanet
 
         public const bool DEFAULT_DONT_GENERATE_VEIN = true;
 
-        static public Dictionary<string, List<AdditionalPlanetConfig>> ReadConfig ()
+        static public void ReadConfig (
+            Dictionary<string, List<AdditionalPlanetConfig>> globalPlanetConfig,
+            Dictionary<string, List<AdditionalPlanetConfig>> gameNameSpecificConfig
+        )
         {
+            globalPlanetConfig.Clear();
+            gameNameSpecificConfig.Clear();
+
+            // 检查并创建模组数据文件夹
             string modDataDir = GameConfig.gameSaveFolder + MOD_DATA_DIR;
             if (!Directory.Exists(modDataDir))
             {
@@ -57,52 +66,92 @@ namespace DSPAddPlanet
             string textConfigFilePath = modDataDir + TEXT_CONFIG_FILE;
             if (File.Exists(xmlConfigFilePath))
             {
+                // 存在 xml 配置，填充 global 和 game name specific
                 try
                 {
-                    return ReadXmlConfig(xmlConfigFilePath);
+                    ReadXmlConfig (xmlConfigFilePath, globalPlanetConfig, gameNameSpecificConfig);
                 }
                 catch (Exception e)
                 {
-                    Plugin.Instance.Logger.LogError(e.Message);
-                    return new Dictionary<string, List<AdditionalPlanetConfig>>();
+                    Plugin.Instance.Logger.LogError(e.StackTrace);
+                    globalPlanetConfig.Clear();
+                    gameNameSpecificConfig.Clear();
                 }
             }
             else if (File.Exists(textConfigFilePath))
             {
+                // 不存在 xml 配置，但是存在 txt 配置，只填充 game name specific
                 try
                 {
-                    return ReadTextConfig(textConfigFilePath);
+                    ReadTextConfig(textConfigFilePath, gameNameSpecificConfig);
                 }
                 catch (Exception e)
                 {
                     Plugin.Instance.Logger.LogError(e.Message);
-                    return new Dictionary<string, List<AdditionalPlanetConfig>>();
+                    gameNameSpecificConfig.Clear();
                 }
             }
             else
             {
+                // 既不存在 xml 配置，也不存在 txt 配置
                 CreateExampleXmlConfigFile(xmlConfigFilePath);
-                return new Dictionary<string, List<AdditionalPlanetConfig>>();
             }
         }
 
-        static private Dictionary<string, List<AdditionalPlanetConfig>> ReadXmlConfig (string filePath)
+        static private void ReadXmlConfig (
+            string filePath,
+            Dictionary<string, List<AdditionalPlanetConfig>> globalPlanetConfig,
+            Dictionary<string, List<AdditionalPlanetConfig>> gameNameSpecificConfig
+        )
         {
-            Plugin.Instance.Logger.LogInfo("ReadXmlConfig");
+            XmlDocument document = new XmlDocument();
+            document.Load(filePath);
 
-            Dictionary<string, List<AdditionalPlanetConfig>> result = new Dictionary<string, List<AdditionalPlanetConfig>>();
+            XmlNode nodeConfig = document.SelectSingleNode("Config");
+            if (nodeConfig == null)
+            {
+                return;
+            }
 
+            // 读取全局行星配置，这些行星配置不需要指定GameName
+            XmlNode nodeGlobal = nodeConfig.SelectSingleNode("Global");
+            if (nodeGlobal != null)
+            {
+                XmlNode nodePlanets = nodeGlobal.SelectSingleNode("Planets");
+                if (nodePlanets != null)
+                {
+                    Plugin.Instance.Logger.LogInfo("Reading global planet config...");
+                    ReadPlanetNodes(nodePlanets, globalPlanetConfig, false);
+                    Plugin.Instance.Logger.LogInfo("Global planet config size: " + globalPlanetConfig.Count);
+                }
+            }
+
+            // 读取指定GameName的行星配置
+            // 备注：考虑到xml的tag命名规则与普通文件名的命名规则不一致，不能使用<GameNameSpecific><GameName><Planets><Planet><UniqueStarId>...的方式来组织配置信息
+            XmlNode nodeGameNameSpecific = nodeConfig.SelectSingleNode("GameNameSpecific");
+            if (nodeGameNameSpecific != null)
+            {
+                XmlNode nodePlanets = nodeGameNameSpecific.SelectSingleNode("Planets");
+                if (nodePlanets != null)
+                {
+                    Plugin.Instance.Logger.LogInfo("Reading game name specific planet config...");
+                    ReadPlanetNodes(nodePlanets, gameNameSpecificConfig, true);
+                    Plugin.Instance.Logger.LogInfo("Config size: " + gameNameSpecificConfig.Count);
+                }
+            }
+        }
+
+        static private void ReadPlanetNodes (XmlNode parent, Dictionary<string, List<AdditionalPlanetConfig>> planetConfig, bool isGameNameRequired)
+        {
+            // 预先获取主题id
             List<int> availableThemeIds = new List<int>();
             foreach (ThemeProto t in LDB.themes.dataArray)
             {
                 availableThemeIds.Add(t.ID);
             }
 
-            XmlDocument document = new XmlDocument();
-            document.Load(filePath);
-
-            XmlNode nodeConfig = document.SelectSingleNode("Config");
-            XmlNodeList nodesPlanet = nodeConfig.ChildNodes;
+            // 遍历子节点，填充 planetConfig 对象
+            XmlNodeList nodesPlanet = parent.ChildNodes;
             for (int i = 0; i < nodesPlanet.Count; ++i)
             {
                 XmlNode nodePlanet = nodesPlanet.Item(i);
@@ -112,9 +161,13 @@ namespace DSPAddPlanet
                 }
 
                 // (required) unique star id
-                string uniqueStarId = ReadStringNode(nodePlanet, "UniqueStarId", true, "Undefined Unique Star Id");
+                string uniqueStarId = ReadUniqueStarId(nodePlanet, isGameNameRequired);
+                Plugin.Instance.Logger.LogInfo(uniqueStarId);
 
                 AdditionalPlanetConfig config = default;
+
+                // (optional)
+                config.IsBirthPoint = ReadBoolNode(nodePlanet, "IsBirthPoint", false, DEFAULT_IS_BIRTH_POINT);
 
                 // (required) index
                 config.Index = ReadIntNode(nodePlanet, "Index", true, default, 0);
@@ -299,9 +352,9 @@ namespace DSPAddPlanet
                     config.VeinCustom = veinCustom;
                 }
 
-                if (result.ContainsKey(uniqueStarId))
+                if (planetConfig.ContainsKey(uniqueStarId))
                 {
-                    List<AdditionalPlanetConfig> configList = result[uniqueStarId];
+                    List<AdditionalPlanetConfig> configList = planetConfig[uniqueStarId];
                     if (configList.FindIndex(c => c.Index == config.Index) != -1)
                     {
                         throw new Exception($"Duplicate index '{config.Index}' in <{uniqueStarId}>");
@@ -310,79 +363,113 @@ namespace DSPAddPlanet
                 }
                 else
                 {
-                    result.Add(uniqueStarId, new List<AdditionalPlanetConfig>() { config });
+                    planetConfig.Add(uniqueStarId, new List<AdditionalPlanetConfig>() { config });
                 }
 
                 Plugin.Instance.Logger.LogInfo($"Found new planet at {uniqueStarId}\r\n{config}");
             }
-
-            return result;
         }
 
         static private void CreateExampleXmlConfigFile (string filePath)
         {
-            // uniqueStarId：唯一恒星ID
-            // index：星球的索引，从0开始
-            // orbitAround：星球是否是其他星球的卫星，如果是卫星的话，是哪个星球的卫星（被环绕卫星的number）
-            // orbitIndex：星球公转轨道的半径
-            // number：星球的编号，（似乎）从1开始
-            // gasGiant：星球是否是气态巨星
-            // info_seed：种子
-            // gen_seed：种子
-            // planetRadius：行星半径
-            // forcePlanetRadius：是否忽略行星半径的限制（最大600）
-            // orbitalPeriod：公转周期（秒）
-            // rotationPeriod：自转周期（秒）
-            // isTidalLocked：是否潮汐锁定
-            // orbitInclination：轨道倾角（度）
-            // orbitLongitude：升交点经度（度,分）
-            // obliquity：地轴倾角（度）
-            // dontGenerateVein：是否不生成矿脉
-            // theme：行星主题
-            // veinCustom：自定义矿脉
-            // replaceAllVeinsTo：替换所有矿脉
             StringBuilder content = new StringBuilder();
             content
                 .Append("<Config>\r\n")
-                .Append("    <Planet>\r\n")
-                .Append("        <UniqueStarId>GameName-ClusterString-StarName</UniqueStarId>\r\n")
-                .Append("        <Index>4</Index>\r\n")
-                .Append("        <OrbitAround>0</OrbitAround>\r\n")
-                .Append("        <OrbitIndex>2</OrbitIndex>\r\n")
-                .Append("        <Number>3</Number>\r\n")
-                .Append("        <GasGiant>false</GasGiant>\r\n")
-                .Append("        <InfoSeed>0</InfoSeed>\r\n")
-                .Append("        <GenSeed>0</GenSeed>\r\n")
-                .Append("        <ForcePlanetRadius>false</ForcePlanetRadius>\r\n")
-                .Append("        <Radius>200</Radius>\r\n")
-                .Append("        <OrbitalPeriod>3600</OrbitalPeriod>\r\n")
-                .Append("        <RotationPeriod>3600</RotationPeriod>\r\n")
-                .Append("        <IsTidalLocked>true</IsTidalLocked>\r\n")
-                .Append("        <OrbitInclination>0</OrbitInclination>\r\n")
-                .Append("        <Obliquity>0</Obliquity>\r\n")
-                .Append("        <DontGenerateVein>true</DontGenerateVein>\r\n")
-                .Append("        <ThemeId>0</ThemeId>\r\n")
-                .Append("        <OrbitLongitude>0</OrbitLongitude>\r\n")
-                .Append("        <VeinCustom>\r\n")
-                .Append("            <Iron>\r\n")
-                .Append("                <VeinGroupCount>\r\n")
-                .Append("                    <Type>Accurate</Type>\r\n")
-                .Append("                    <AccurateValue>10</AccurateValue>\r\n")
-                .Append("                </VeinGroupCount>\r\n")
-                .Append("                <VeinSpotCount>\r\n")
-                .Append("                    <Type>Random</Type>\r\n")
-                .Append("                    <RandomBaseValue>100000</RandomBaseValue>\r\n")
-                .Append("                    <RandomCoef>1</RandomCoef>\r\n")
-                .Append("                    <RandomMulOffset>0</RandomMulOffset>\r\n")
-                .Append("                    <RandomAddOffset>5</RandomAddOffset>\r\n")
-                .Append("                </VeinSpotCount>\r\n")
-                .Append("                <VeinAmount>\r\n")
-                .Append("                    <Type>Default</Type>\r\n")
-                .Append("                </VeinAmount>\r\n")
-                .Append("            </Iron>\r\n")
-                .Append("        </VeinCustom>\r\n")
-                .Append("        <ReplaceAllVeinsTo>Copper</ReplaceAllVeinsTo>\r\n")
-                .Append("    </Planet>\r\n")
+                .Append("    <Global>\r\n")
+                .Append("        <Planets>\r\n")
+                .Append("            <Planet>\r\n")
+                .Append("                <UniqueStarId>\r\n")
+                .Append("                    <ClusterString>The cluster string</ClusterString>\r\n")
+                .Append("                    <Star>The star name</Star>\r\n")
+                .Append("                </UniqueStarId>\r\n")
+                .Append("                <IsBirthPoint>false</IsBirthPoint>\r\n")
+                .Append("                <Index>4</Index>\r\n")
+                .Append("                <OrbitAround>0</OrbitAround>\r\n")
+                .Append("                <OrbitIndex>2</OrbitIndex>\r\n")
+                .Append("                <Number>3</Number>\r\n")
+                .Append("                <GasGiant>false</GasGiant>\r\n")
+                .Append("                <InfoSeed>0</InfoSeed>\r\n")
+                .Append("                <GenSeed>0</GenSeed>\r\n")
+                .Append("                <ForcePlanetRadius>false</ForcePlanetRadius>\r\n")
+                .Append("                <Radius>200</Radius>\r\n")
+                .Append("                <OrbitalPeriod>3600</OrbitalPeriod>\r\n")
+                .Append("                <RotationPeriod>3600</RotationPeriod>\r\n")
+                .Append("                <IsTidalLocked>true</IsTidalLocked>\r\n")
+                .Append("                <OrbitInclination>0</OrbitInclination>\r\n")
+                .Append("                <Obliquity>0</Obliquity>\r\n")
+                .Append("                <DontGenerateVein>true</DontGenerateVein>\r\n")
+                .Append("                <ThemeId>0</ThemeId>\r\n")
+                .Append("                <OrbitLongitude>0</OrbitLongitude>\r\n")
+                .Append("                <VeinCustom>\r\n")
+                .Append("                    <Iron>\r\n")
+                .Append("                        <VeinGroupCount>\r\n")
+                .Append("                            <Type>Accurate</Type>\r\n")
+                .Append("                            <AccurateValue>10</AccurateValue>\r\n")
+                .Append("                        </VeinGroupCount>\r\n")
+                .Append("                        <VeinSpotCount>\r\n")
+                .Append("                            <Type>Random</Type>\r\n")
+                .Append("                            <RandomBaseValue>100000</RandomBaseValue>\r\n")
+                .Append("                            <RandomCoef>1</RandomCoef>\r\n")
+                .Append("                            <RandomMulOffset>0</RandomMulOffset>\r\n")
+                .Append("                            <RandomAddOffset>5</RandomAddOffset>\r\n")
+                .Append("                        </VeinSpotCount>\r\n")
+                .Append("                        <VeinAmount>\r\n")
+                .Append("                            <Type>Default</Type>\r\n")
+                .Append("                        </VeinAmount>\r\n")
+                .Append("                    </Iron>\r\n")
+                .Append("                </VeinCustom>\r\n")
+                .Append("                <ReplaceAllVeinsTo>Copper</ReplaceAllVeinsTo>\r\n")
+                .Append("            </Planet>\r\n")
+                .Append("        </Planets>\r\n")
+                .Append("    </Global>\r\n")
+                .Append("    <GameNameSpecific>\r\n")
+                .Append("        <Planets>\r\n")
+                .Append("            <Planet>\r\n")
+                .Append("                <UniqueStarId>\r\n")
+                .Append("                    <GameName>The game name of your save file</GameName>\r\n")
+                .Append("                    <ClusterString>The cluster string</ClusterString>\r\n")
+                .Append("                    <Star>The star name</Star>\r\n")
+                .Append("                </UniqueStarId>\r\n")
+                .Append("                <IsBirthPoint>false</IsBirthPoint>\r\n")
+                .Append("                <Index>4</Index>\r\n")
+                .Append("                <OrbitAround>0</OrbitAround>\r\n")
+                .Append("                <OrbitIndex>2</OrbitIndex>\r\n")
+                .Append("                <Number>3</Number>\r\n")
+                .Append("                <GasGiant>false</GasGiant>\r\n")
+                .Append("                <InfoSeed>0</InfoSeed>\r\n")
+                .Append("                <GenSeed>0</GenSeed>\r\n")
+                .Append("                <ForcePlanetRadius>false</ForcePlanetRadius>\r\n")
+                .Append("                <Radius>200</Radius>\r\n")
+                .Append("                <OrbitalPeriod>3600</OrbitalPeriod>\r\n")
+                .Append("                <RotationPeriod>3600</RotationPeriod>\r\n")
+                .Append("                <IsTidalLocked>true</IsTidalLocked>\r\n")
+                .Append("                <OrbitInclination>0</OrbitInclination>\r\n")
+                .Append("                <Obliquity>0</Obliquity>\r\n")
+                .Append("                <DontGenerateVein>true</DontGenerateVein>\r\n")
+                .Append("                <ThemeId>0</ThemeId>\r\n")
+                .Append("                <OrbitLongitude>0</OrbitLongitude>\r\n")
+                .Append("                <VeinCustom>\r\n")
+                .Append("                    <Iron>\r\n")
+                .Append("                        <VeinGroupCount>\r\n")
+                .Append("                            <Type>Accurate</Type>\r\n")
+                .Append("                            <AccurateValue>10</AccurateValue>\r\n")
+                .Append("                        </VeinGroupCount>\r\n")
+                .Append("                        <VeinSpotCount>\r\n")
+                .Append("                            <Type>Random</Type>\r\n")
+                .Append("                            <RandomBaseValue>100000</RandomBaseValue>\r\n")
+                .Append("                            <RandomCoef>1</RandomCoef>\r\n")
+                .Append("                            <RandomMulOffset>0</RandomMulOffset>\r\n")
+                .Append("                            <RandomAddOffset>5</RandomAddOffset>\r\n")
+                .Append("                        </VeinSpotCount>\r\n")
+                .Append("                        <VeinAmount>\r\n")
+                .Append("                            <Type>Default</Type>\r\n")
+                .Append("                        </VeinAmount>\r\n")
+                .Append("                    </Iron>\r\n")
+                .Append("                </VeinCustom>\r\n")
+                .Append("                <ReplaceAllVeinsTo>Copper</ReplaceAllVeinsTo>\r\n")
+                .Append("            </Planet>\r\n")
+                .Append("        </Planets>\r\n")
+                .Append("    </GameNameSpecific>\r\n")
                 .Append("</Config>\r\n");
             StreamWriter writer = File.CreateText(filePath);
             writer.Write(content);
@@ -390,10 +477,8 @@ namespace DSPAddPlanet
             writer.Dispose();
         }
 
-        static private Dictionary<string, List<AdditionalPlanetConfig>> ReadTextConfig (string filePath)
+        static private void ReadTextConfig (string filePath, Dictionary<string, List<AdditionalPlanetConfig>> planetConfig)
         {
-            Dictionary<string, List<AdditionalPlanetConfig>> result = new Dictionary<string, List<AdditionalPlanetConfig>>();
-
             // 获取配置
             string[] rawConfigArray = File.ReadAllLines(filePath);
 
@@ -408,7 +493,13 @@ namespace DSPAddPlanet
 
                 Dictionary<string, string> configMap = Utility.ParseQueryString(row);
 
+                // 保持对旧 uniqueStarId 的兼容性（旧版本使用 '-' 符号作为分隔符）
                 string uniqueStarId = configMap.GetValueSafe("uniqueStarId");
+                uniqueStarId = uniqueStarId.Substring(0, uniqueStarId.IndexOf('-')) + // game name
+                    '.' +
+                    uniqueStarId.Substring(uniqueStarId.IndexOf('-') + 1, uniqueStarId.LastIndexOf('-')) + // cluster string
+                    '.' +
+                    uniqueStarId.Substring(uniqueStarId.LastIndexOf('-') + 1); // star name
                 if (string.IsNullOrWhiteSpace(uniqueStarId))
                 {
                     throw new Exception($"Missing parameter 'uniqueStarId'");
@@ -577,18 +668,17 @@ namespace DSPAddPlanet
                 config._HasReplaceAllVeinsTo = false;
                 config.ReplaceAllVeinsTo = EVeinType.None;
 
-                if (!result.ContainsKey(uniqueStarId))
+                if (!planetConfig.ContainsKey(uniqueStarId))
                 {
-                    result[uniqueStarId] = new List<AdditionalPlanetConfig>();
+                    planetConfig[uniqueStarId] = new List<AdditionalPlanetConfig>();
                 }
 
-                result[uniqueStarId].Add(config);
+                planetConfig[uniqueStarId].Add(config);
 
                 Plugin.Instance.Logger.LogInfo($"Found new planet at {uniqueStarId}\r\n{config}");
             }
-
-            return result;
         }
+
         static private string ReadStringNode (XmlNode parent, string childName, bool required, string defaultValue)
         {
             XmlNode childNode = parent.SelectSingleNode(childName);
@@ -780,6 +870,39 @@ namespace DSPAddPlanet
             }
 
             throw new Exception("Unrecognizable CustomType: " + type);
+        }
+
+        static string ReadUniqueStarId (XmlNode parent, bool isGameNameRequired)
+        {
+            XmlNode nodeUniqueStarId = parent.SelectSingleNode("UniqueStarId");
+            if (nodeUniqueStarId == null)
+            {
+                throw new Exception("Missing paremeter 'UniqueStarId'");
+            }
+
+            string clusterString = ReadStringNode(nodeUniqueStarId, "ClusterString", true, null).Trim();
+            string star = ReadStringNode(nodeUniqueStarId, "Star", true, null).Trim();
+            if (string.IsNullOrWhiteSpace(clusterString))
+            {
+                throw new Exception("Parameter 'ClusterString' can not be empty");
+            }
+            if (string.IsNullOrWhiteSpace(star))
+            {
+                throw new Exception("Parameter 'Star' can not be empty");
+            }
+            if (!isGameNameRequired)
+            {
+                // 如果不需要 GameName 的话，到这里就可以返回结果了
+                return Utility.UniqueStarIdWithoutGameName(clusterString, star);
+            }
+
+            // 否则，获取 GameName 并返回带有 GameName 的结果
+            string gameName = ReadStringNode(nodeUniqueStarId, "GameName", true, null).Trim();
+            if (string.IsNullOrWhiteSpace(gameName))
+            {
+                throw new Exception("Parameter 'GameName' can not be empty when required");
+            }
+            return Utility.UniqueStarIdWithGameName(gameName, clusterString, star);
         }
     }
 }

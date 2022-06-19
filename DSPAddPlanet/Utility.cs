@@ -21,9 +21,14 @@ namespace DSPAddPlanet
             return parameterMap;
         }
 
-        static public string UniqueStarId (string gameName, string clusterString, string starName)
+        static public string UniqueStarIdWithGameName (string gameName, string clusterString, string starName)
         {
-            return gameName + '-' + clusterString + '-' + starName;
+            return gameName + '.' + clusterString + '.' + starName;
+        }
+
+        static public string UniqueStarIdWithoutGameName (string clusterString, string starName)
+        {
+            return clusterString + '.' + starName;
         }
 
         static public void PrintThemeTable ()
@@ -46,8 +51,10 @@ namespace DSPAddPlanet
                     for (int i = 0; i < theme.GasItems.Length; ++i)
                     {
                         ItemProto itemProto = LDB.items.Select(theme.GasItems[i]);
-                        //gasItems.Append(itemProto.Name.Translate());
-                        gasItems.Append(itemProto.Name);
+
+                        gasItems.Append(itemProto.Name.Translate());
+                        //gasItems.Append(itemProto.Name);
+
                         if (i < theme.GasItems.Length - 1)
                         {
                             gasItems.Append(", ");
@@ -69,11 +76,12 @@ namespace DSPAddPlanet
                 }
 
                 ItemProto waterItemProto = LDB.items.Select(theme.WaterItemId);
-                //string waterItem = waterItemProto == null ? "" : waterItemProto.Name.Translate();
-                string waterItem = waterItemProto == null ? "" : waterItemProto.Name;
 
-                //string name = theme.DisplayName.Translate();
-                string name = theme.DisplayName;
+                string waterItem = waterItemProto == null ? "" : waterItemProto.Name.Translate();
+                //string waterItem = waterItemProto == null ? "" : waterItemProto.Name;
+
+                string name = theme.DisplayName.Translate();
+                //string name = theme.DisplayName;
 
                 table.Append($"| {theme.ID} | {name} | {theme.PlanetType} | {theme.Temperature} | {gasItems} | {gasSpeeds} | {theme.Wind} | {theme.IonHeight} | {theme.WaterHeight} | {waterItem} | {theme.CullingRadius} | {theme.IceFlag} |\r\n");
             }
@@ -90,6 +98,69 @@ namespace DSPAddPlanet
                 strings.Add(v.ToString());
             }
             return strings.Join();
+        }
+
+        /// <summary>
+        /// 根据当前的游戏名称、clusterString和恒星名称从配置列表中获取行星配置信息，如果未找到配置信息则返回null
+        /// </summary>
+        /// <param name="gameName">当前的游戏名称</param>
+        /// <param name="clusterString"></param>
+        /// <param name="starName"></param>
+        /// <param name="globalConfig"></param>
+        /// <param name="gameNameSpecificConfig"></param>
+        /// <param name="uniqueStarId"></param>
+        /// <returns></returns>
+        static public List<AdditionalPlanetConfig> GetPlanetConfigList (
+            string gameName,
+            string clusterString,
+            string starName,
+            Dictionary<string, List<AdditionalPlanetConfig>> globalConfig,
+            Dictionary<string, List<AdditionalPlanetConfig>> gameNameSpecificConfig,
+            out string uniqueStarId
+        )
+        {
+            if (globalConfig.Count == 0 && gameNameSpecificConfig.Count == 0)
+            {
+                uniqueStarId = null;
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(gameName))
+            {
+                // 如果当前游戏没有名称，则尝试获取全局行星配置
+                uniqueStarId = UniqueStarIdWithoutGameName(clusterString, starName);
+                if (globalConfig.ContainsKey(uniqueStarId))
+                {
+                    return globalConfig[uniqueStarId];
+                }
+                else
+                {
+                    // 没有游戏名称，且全局配置列表中没有该恒星的配置
+                    return null;
+                }
+            }
+            else
+            {
+                // 游戏名称不为空，则先尝试获取针对特定游戏名称的行星配置，再尝试获取全局行星配置
+                uniqueStarId = UniqueStarIdWithGameName(gameName, clusterString, starName);
+                if (gameNameSpecificConfig.ContainsKey(uniqueStarId))
+                {
+                    return gameNameSpecificConfig[uniqueStarId];
+                }
+                else
+                {
+                    uniqueStarId = UniqueStarIdWithoutGameName(clusterString, starName);
+                    if (globalConfig.ContainsKey(uniqueStarId))
+                    {
+                        return globalConfig[uniqueStarId];
+                    }
+                    else
+                    {
+                        // 有游戏名称，但是针对特定游戏名称的行星配置列表和全局行星配置列表中都没有该恒星的配置
+                        return null;
+                    }
+                }
+            }
         }
     }
 }
