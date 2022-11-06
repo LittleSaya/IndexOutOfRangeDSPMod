@@ -370,6 +370,10 @@ Careful about the name of your save file when you save your game because new pla
 
 ## Compatibility
 
+### 0.2.1
+
+Build target: game version 0.9.27.15033, BepInEx version: 5.4.19 (should work under 5.4.17)
+
 ### 0.2.0
 
 Build target: game version 0.9.26.13034, BepInEx version: 5.4.19 (should work under 5.4.17)
@@ -383,6 +387,12 @@ Build target: game version 0.9.26.12900, BepInEx version: 5.4.19 (should work un
 Build target: game version 0.9.25.12201, BepInEx version: 5.4.19 (should work under 5.4.17)
 
 ## Change log
+
+### 0.2.0 -> 0.2.1
+
+- Compatibility with game version 0.9.27.15033
+
+- Fix 'Add Planet' button losing function when load saved games multiple times
 
 ### 0.1.1 -> 0.2.0
 
