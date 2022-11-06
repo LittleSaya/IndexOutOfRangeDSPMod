@@ -73,6 +73,7 @@ namespace DSPAddPlanet
                 }
                 catch (Exception e)
                 {
+                    Plugin.Instance.Logger.LogError(e.Message);
                     Plugin.Instance.Logger.LogError(e.StackTrace);
                     globalPlanetConfig.Clear();
                     gameNameSpecificConfig.Clear();
@@ -87,6 +88,7 @@ namespace DSPAddPlanet
                 }
                 catch (Exception e)
                 {
+                    Plugin.Instance.Logger.LogError(e.Message);
                     Plugin.Instance.Logger.LogError(e.Message);
                     gameNameSpecificConfig.Clear();
                 }
@@ -712,11 +714,11 @@ namespace DSPAddPlanet
             }
             if (!int.TryParse(childNode.InnerText.Trim(), out int result))
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be an integer");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be an integer, current value: {childNode.InnerText}");
             }
             if (result < min || result > max)
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in range [{min}, {max}]");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in range [{min}, {max}], current value: {childNode.InnerText}");
             }
             return result;
         }
@@ -737,11 +739,11 @@ namespace DSPAddPlanet
             }
             if (!int.TryParse(childNode.InnerText.Trim(), out int result))
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be an integer");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be an integer, current value: {childNode.InnerText}");
             }
             if (!set.Contains(result))
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in set {{{set.Join()}}}]");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in set {{{set.Join()}}}, current value: {childNode.InnerText}");
             }
             return result;
         }
@@ -762,11 +764,11 @@ namespace DSPAddPlanet
             }
             if (!float.TryParse(childNode.InnerText.Trim(), out float result))
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be an integer");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be an integer, current value: {childNode.InnerText}");
             }
             if (result < min || result > max)
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in range [{min}, {max}]");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in range [{min}, {max}], current value: {childNode.InnerText}");
             }
             return result;
         }
@@ -787,7 +789,7 @@ namespace DSPAddPlanet
             }
             if (!bool.TryParse(childNode.InnerText.Trim(), out bool result))
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be 'true' or 'false'");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be 'true' or 'false', current value: {childNode.InnerText}");
             }
             return result;
         }
@@ -812,7 +814,7 @@ namespace DSPAddPlanet
             }
             catch (Exception)
             {
-                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in set {{{Utility.EnumValuesJoin<T>()}}}");
+                throw new Exception($"Invalid parameter '{childName}', '{childName}' must be in set {{{Utility.EnumValuesJoin<T>()}}}, current value: {childNode.InnerText}");
             }
         }
 
