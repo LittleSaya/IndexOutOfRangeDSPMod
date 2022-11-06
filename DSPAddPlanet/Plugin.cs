@@ -21,7 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.2.0";
+        public const string PLUGIN_VERSION = "0.2.1";
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
@@ -84,9 +84,9 @@ namespace DSPAddPlanet
             // 创建用户界面
             harmony.PatchAll(typeof(Patch_UIGame));
 
-            harmony.PatchAll(typeof(Patch_Debug));
+            //harmony.PatchAll(typeof(Patch_Debug));
 
-            Utility.PrintThemeTable();
+            //Utility.PrintThemeTable();
         }
 
         /// <summary>
@@ -163,17 +163,8 @@ namespace DSPAddPlanet
                     return;
                 }
 
-                // 修改行星数量
-                star.planetCount += configList.Count;
-
-                // 创建新的数组，复制原有行星的引用
-                PlanetData[] planets = new PlanetData[star.planets.Length + configList.Count];
-                int i = 0;
-                for (; i < star.planets.Length; ++i)
-                {
-                    planets[i] = star.planets[i];
-                }
-                star.planets = planets;
+                // 创建新的列表，复制原有行星的引用
+                List<PlanetData> planets = new List<PlanetData>(star.planets);
 
                 // 创建新的行星
                 foreach (AdditionalPlanetConfig config in configList)
@@ -181,9 +172,9 @@ namespace DSPAddPlanet
                     // 检查该配置中的行星index是否是已经存在的行星的index
                     bool isExistingPlanet = false;
                     int existingPlanetIndex = 0;
-                    for (int j = 0; j < i; ++j)
+                    for (int i = 0; i < star.planets.Length; ++i)
                     {
-                        if (planets[j].index == config.Index)
+                        if (planets[i].index == config.Index)
                         {
                             isExistingPlanet = true;
                             existingPlanetIndex = config.Index;
@@ -191,7 +182,7 @@ namespace DSPAddPlanet
                         }
                     }
 
-                    PlanetData planet = null;
+                    PlanetData planet;
                     if (!isExistingPlanet)
                     {
                         // 阶段：创建行星
@@ -203,6 +194,7 @@ namespace DSPAddPlanet
                     {
                         // 获取已经存在的行星
                         planet = planets[existingPlanetIndex];
+                        Instance.Logger.LogInfo($"Replace existing planet at {uniqueStarId}. Index: {config.Index}, Number: {config.Number}, Orbit index: {config.OrbitIndex}, Gas giant: {config.GasGiant}, Theme id: {config.ThemeId}");
                     }
 
                     // 检查并更新出生位置
@@ -321,8 +313,16 @@ namespace DSPAddPlanet
                         }
                     }
 
-                    star.planets[i++] = planet;
+                    // 替换或者新增行星
+                    if (isExistingPlanet) {
+                        planets[existingPlanetIndex] = planet;
+                    } else {
+                        planets.Add(planet);
+                    }
                 }
+
+                star.planetCount = planets.Count;
+                star.planets = planets.ToArray();
             }
         }
 
@@ -353,40 +353,22 @@ namespace DSPAddPlanet
             // 阶段：矿脉生成Prefix
             // 主要影响矿脉是否生成
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
-            static bool PlanetAlgorithm_GenerateVeins_Prefix (PlanetAlgorithm __instance)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm), __instance);
-            }
+            static bool PlanetAlgorithm_GenerateVeins_Prefix (PlanetAlgorithm __instance) => PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm), __instance);
 
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
-            static bool PlanetAlgorithm0_GenerateVeins_Prefix (PlanetAlgorithm0 __instance)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm0), __instance);
-            }
+            static bool PlanetAlgorithm0_GenerateVeins_Prefix (PlanetAlgorithm0 __instance) => PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm0), __instance);
 
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
-            static bool PlanetAlgorithm7_GenerateVeins_Prefix (PlanetAlgorithm7 __instance)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm7), __instance);
-            }
+            static bool PlanetAlgorithm7_GenerateVeins_Prefix (PlanetAlgorithm7 __instance) => PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm7), __instance);
 
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
-            static bool PlanetAlgorithm11_GenerateVeins_Prefix (PlanetAlgorithm11 __instance)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm11), __instance);
-            }
+            static bool PlanetAlgorithm11_GenerateVeins_Prefix (PlanetAlgorithm11 __instance) => PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm11), __instance);
 
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
-            static bool PlanetAlgorithm12_GenerateVeins_Prefix (PlanetAlgorithm12 __instance)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm12), __instance);
-            }
+            static bool PlanetAlgorithm12_GenerateVeins_Prefix (PlanetAlgorithm12 __instance) => PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm12), __instance);
 
             [HarmonyPrefix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
-            static bool PlanetAlgorithm13_GenerateVeins_Prefix (PlanetAlgorithm13 __instance)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm13), __instance);
-            }
+            static bool PlanetAlgorithm13_GenerateVeins_Prefix (PlanetAlgorithm13 __instance) => PlanetAlgorithmX_GenerateVeins_Prefix(typeof(PlanetAlgorithm13), __instance);
 
             static bool PlanetAlgorithmX_GenerateVeins_Prefix (Type type, object instance)
             {
@@ -433,40 +415,22 @@ namespace DSPAddPlanet
             // 阶段：矿脉生成Postfix
             // 主要使 ReplaceAllVeinsTo 发挥作用
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
-            static void PlanetAlgorithm_GenerateVeins_Postfix (PlanetAlgorithm __instance)
-            {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm), __instance);
-            }
+            static void PlanetAlgorithm_GenerateVeins_Postfix (PlanetAlgorithm __instance) => PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm), __instance);
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm0), nameof(PlanetAlgorithm0.GenerateVeins))]
-            static void PlanetAlgorithm0_GenerateVeins_Postfix (PlanetAlgorithm0 __instance)
-            {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm0), __instance);
-            }
+            static void PlanetAlgorithm0_GenerateVeins_Postfix (PlanetAlgorithm0 __instance) => PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm0), __instance);
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
-            static void PlanetAlgorithm7_GenerateVeins_Postfix (PlanetAlgorithm7 __instance)
-            {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm7), __instance);
-            }
+            static void PlanetAlgorithm7_GenerateVeins_Postfix (PlanetAlgorithm7 __instance) => PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm7), __instance);
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
-            static void PlanetAlgorithm11_GenerateVeins_Postfix (PlanetAlgorithm11 __instance)
-            {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm11), __instance);
-            }
+            static void PlanetAlgorithm11_GenerateVeins_Postfix (PlanetAlgorithm11 __instance) => PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm11), __instance);
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
-            static void PlanetAlgorithm12_GenerateVeins_Postfix (PlanetAlgorithm12 __instance)
-            {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm12), __instance);
-            }
+            static void PlanetAlgorithm12_GenerateVeins_Postfix (PlanetAlgorithm12 __instance) => PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm12), __instance);
 
             [HarmonyPostfix, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
-            static void PlanetAlgorithm13_GenerateVeins_Postfix (PlanetAlgorithm13 __instance)
-            {
-                PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm13), __instance);
-            }
+            static void PlanetAlgorithm13_GenerateVeins_Postfix (PlanetAlgorithm13 __instance) => PlanetAlgorithmX_GenerateVeins_Postfix(typeof(PlanetAlgorithm13), __instance);
 
             static void PlanetAlgorithmX_GenerateVeins_Postfix (Type type, object instance)
             {
@@ -525,33 +489,23 @@ namespace DSPAddPlanet
             // 主要使 VeinCustom 发挥作用
             [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm), nameof(PlanetAlgorithm.GenerateVeins))]
             static IEnumerable<CodeInstruction> PlanetAlgorithm_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm), instructions, generator);
-            }
+                => PlanetAlgorithmX_GenerateVeins_Transpiler (typeof(PlanetAlgorithm), instructions, generator);
 
             [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm7), nameof(PlanetAlgorithm7.GenerateVeins))]
             static IEnumerable<CodeInstruction> PlanetAlgorithm7_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm7), instructions, generator);
-            }
+                => PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm7), instructions, generator);
 
             [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm11), nameof(PlanetAlgorithm11.GenerateVeins))]
             static IEnumerable<CodeInstruction> PlanetAlgorithm11_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm11), instructions, generator);
-            }
+                => PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm11), instructions, generator);
 
             [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm12), nameof(PlanetAlgorithm12.GenerateVeins))]
             static IEnumerable<CodeInstruction> PlanetAlgorithm12_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm12), instructions, generator);
-            }
+                => PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm12), instructions, generator);
 
             [HarmonyTranspiler, HarmonyPatch(typeof(PlanetAlgorithm13), nameof(PlanetAlgorithm13.GenerateVeins))]
             static IEnumerable<CodeInstruction> PlanetAlgorithm13_GenerateVeins_Transpiler (IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-            {
-                return PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm13), instructions, generator);
-            }
+                => PlanetAlgorithmX_GenerateVeins_Transpiler(typeof(PlanetAlgorithm13), instructions, generator);
 
             static IEnumerable<CodeInstruction> PlanetAlgorithmX_GenerateVeins_Transpiler (Type type, IEnumerable<CodeInstruction> instructions, ILGenerator generator)
             {
@@ -1145,6 +1099,7 @@ namespace DSPAddPlanet
                 ref Transform ___atmoTrans0,
                 ref Transform ___atmoTrans1,
                 ref Material ___atmoMat,
+                ref Material ___atmoMatLate,
                 ref Vector4 ___atmoMatRadiusParam,
                 ref Transform ___lookCamera,
                 ref UniverseSimulator ___universe,
@@ -1152,8 +1107,7 @@ namespace DSPAddPlanet
             )
             {
                 ___planetData = planet;
-                if (___planetData.atmosMaterial != null)
-                {
+                if (___planetData.atmosMaterial != null) {
                     GameObject gameObject = new GameObject("Atmosphere");
                     gameObject.layer = 31;
                     ___atmoTrans0 = gameObject.transform;
@@ -1166,20 +1120,15 @@ namespace DSPAddPlanet
                     ___atmoTrans1.localPosition = Vector3.zero;
                     UnityEngine.Object.Destroy(gameObject2.GetComponent<Collider>());
                     Renderer component = gameObject2.GetComponent<Renderer>();
-                    Material material = (___atmoMat = (component.sharedMaterial = ___planetData.atmosMaterial));
+                    ___atmoMat = ___planetData.atmosMaterial;
+                    ___atmoMatLate = ___planetData.atmosMaterialLate;
+                    component.sharedMaterials = new Material[2] { ___atmoMat, ___atmoMatLate };
                     component.shadowCastingMode = ShadowCastingMode.Off;
                     component.receiveShadows = false;
                     component.lightProbeUsage = LightProbeUsage.Off;
                     component.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
                     ___atmoTrans1.localScale = Vector3.one * (planet.realRadius * 5f);
-                    // ("Radius [Planet(x) Ocean (y) & Atmos (z) & Enabled (w)]", Vector) = (200,199.7,270,1)
                     ___atmoMatRadiusParam = ___atmoMat.GetVector("_PlanetRadius");
-
-                    float oceanOffset = 199.7f - 200f;
-                    float atmosOffset = 270f - 200f;
-                    ___atmoMatRadiusParam.x = planet.realRadius;
-                    ___atmoMatRadiusParam.y = planet.realRadius + oceanOffset;
-                    ___atmoMatRadiusParam.z = planet.realRadius + atmosOffset;
                 }
                 ___lookCamera = Camera.main.transform;
                 ___universe = GameMain.universeSimulator;
@@ -1247,8 +1196,6 @@ namespace DSPAddPlanet
         {
             static private bool isCreated = false;
 
-            static private bool isInit = false;
-
             [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnCreate")]
             static void UIGame__OnCreate_Postfix ()
             {
@@ -1288,13 +1235,10 @@ namespace DSPAddPlanet
             [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "_OnInit")]
             static void UIGame__OnInit_Postfix ()
             {
-                if (isInit)
+                if (!Instance.uiAddPlanet.inited)
                 {
-                    return;
+                    Instance.uiAddPlanet._Init(Instance.uiAddPlanet.data);
                 }
-                isInit = true;
-
-                Instance.uiAddPlanet._Init(Instance.uiAddPlanet.data);
             }
 
             [HarmonyPostfix, HarmonyPatch(typeof(UIGame), "ShutAllFunctionWindow")]
