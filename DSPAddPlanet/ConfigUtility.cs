@@ -47,6 +47,11 @@ namespace DSPAddPlanet
 
         public const bool DEFAULT_DONT_GENERATE_VEIN = true;
 
+        /// <summary>
+        /// 读取配置，并按 index 对配置进行排序
+        /// </summary>
+        /// <param name="globalPlanetConfig"></param>
+        /// <param name="gameNameSpecificConfig"></param>
         static public void ReadConfig (
             Dictionary<string, List<AdditionalPlanetConfig>> globalPlanetConfig,
             Dictionary<string, List<AdditionalPlanetConfig>> gameNameSpecificConfig
@@ -97,6 +102,13 @@ namespace DSPAddPlanet
             {
                 // 既不存在 xml 配置，也不存在 txt 配置
                 CreateExampleXmlConfigFile(xmlConfigFilePath);
+            }
+
+            foreach (var pair in globalPlanetConfig) {
+                pair.Value.Sort((a, b) => a.Index - b.Index);
+            }
+            foreach (var pair in gameNameSpecificConfig) {
+                pair.Value.Sort((a, b) => a.Index - b.Index);
             }
         }
 

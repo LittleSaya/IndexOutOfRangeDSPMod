@@ -21,7 +21,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.2.1";
+        public const string PLUGIN_VERSION = "0.2.2";
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;
@@ -163,8 +163,51 @@ namespace DSPAddPlanet
                     return;
                 }
 
-                // 创建新的列表，复制原有行星的引用
-                List<PlanetData> planets = new List<PlanetData>(star.planets);
+                // 确定需要创建多少个新的行星
+                int newPlanetsCount = 0;
+                foreach (AdditionalPlanetConfig config in configList) {
+                    bool exists = false;
+                    foreach (PlanetData planet in star.planets) {
+                        if (planet.index == config.Index) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        ++newPlanetsCount;
+                    }
+                }
+
+                Instance.Logger.LogInfo($"{configList.Count} configurations, {newPlanetsCount} new planets in {uniqueStarId} (current game name: {GameMain.gameName}");
+
+                // Index必须连续，不能有空的行星
+                const int STATE_OLD = 0;
+                const int STATE_NEW = 1;
+                const int STATE_EMPTY = 2;
+                int[] indexConsistentCheck = new int[star.planets.Length + newPlanetsCount];
+                for (int i = 0; i < indexConsistentCheck.Length; ++i) {
+                    indexConsistentCheck[i] = STATE_EMPTY;
+                }
+                foreach (PlanetData planet in star.planets) {
+                    indexConsistentCheck[planet.index] = STATE_OLD;
+                }
+                foreach (AdditionalPlanetConfig config in configList) {
+                    indexConsistentCheck[config.Index] = STATE_NEW;
+                }
+                for (int i = 0; i < indexConsistentCheck.Length; ++i) {
+                    if (indexConsistentCheck[i] == STATE_EMPTY) {
+                        throw new Exception($"Empty planet in {uniqueStarId}, planet index: {i} (current game name: {GameMain.gameName}). Please check the consistency of planets' indexes");
+                    }
+                }
+
+                Instance.Logger.LogInfo("Index consistency checked");
+
+                // 创建新的列表，复制原有行星的引用，然后把原来的行星列表替换掉
+                int originalPlanetsCount = star.planets.Length;
+                PlanetData[] tempPlanets = new PlanetData[star.planets.Length + newPlanetsCount];
+                Array.Copy(star.planets, tempPlanets, star.planets.Length);
+                star.planets = tempPlanets;
+                star.planetCount = tempPlanets.Length;
 
                 // 创建新的行星
                 foreach (AdditionalPlanetConfig config in configList)
@@ -172,9 +215,9 @@ namespace DSPAddPlanet
                     // 检查该配置中的行星index是否是已经存在的行星的index
                     bool isExistingPlanet = false;
                     int existingPlanetIndex = 0;
-                    for (int i = 0; i < star.planets.Length; ++i)
+                    for (int i = 0; i < originalPlanetsCount; ++i)
                     {
-                        if (planets[i].index == config.Index)
+                        if (star.planets[i].index == config.Index)
                         {
                             isExistingPlanet = true;
                             existingPlanetIndex = config.Index;
@@ -187,13 +230,12 @@ namespace DSPAddPlanet
                     {
                         // 阶段：创建行星
                         planet = PlanetGen.CreatePlanet(galaxy, star, gameDesc.savedThemeIds, config.Index, config.OrbitAround, config.OrbitIndex, config.Number, config.GasGiant, config.InfoSeed, config.GenSeed);
-
                         Instance.Logger.LogInfo($"Created new planet at {uniqueStarId}. Index: {config.Index}, Number: {config.Number}, Orbit index: {config.OrbitIndex}, Gas giant: {config.GasGiant}, Theme id: {config.ThemeId}");
                     }
                     else
                     {
                         // 获取已经存在的行星
-                        planet = planets[existingPlanetIndex];
+                        planet = star.planets[existingPlanetIndex];
                         Instance.Logger.LogInfo($"Replace existing planet at {uniqueStarId}. Index: {config.Index}, Number: {config.Number}, Orbit index: {config.OrbitIndex}, Gas giant: {config.GasGiant}, Theme id: {config.ThemeId}");
                     }
 
@@ -315,14 +357,11 @@ namespace DSPAddPlanet
 
                     // 替换或者新增行星
                     if (isExistingPlanet) {
-                        planets[existingPlanetIndex] = planet;
+                        star.planets[existingPlanetIndex] = planet;
                     } else {
-                        planets.Add(planet);
+                        star.planets[planet.index] = planet;
                     }
                 }
-
-                star.planetCount = planets.Count;
-                star.planets = planets.ToArray();
             }
         }
 
@@ -1352,114 +1391,10 @@ namespace DSPAddPlanet
 
         class Patch_Debug
         {
-            //[HarmonyTranspiler, HarmonyPatch(typeof(PlanetGrid), nameof(PlanetGrid.ReformSnapTo))]
-            //static IEnumerable<CodeInstruction> PlanetGrid_ReformSnapTo_Transpiler (IEnumerable<CodeInstruction> instructions)
-            //{
-            //    CodeMatcher matcher = new CodeMatcher(instructions);
-
-            //    matcher.Start();
-
-            //    ILUtility.PrintInt(matcher, ILUtility.VariableType.Argument, 0, typeof(PlanetGrid).GetField(nameof(PlanetGrid.segment)), "segment");
-
-            //    ILUtility.PrintVector3(matcher, ILUtility.VariableType.Argument, 1, "pos");
-            //    matcher.Advance(2);
-            //    ILUtility.PrintVector3(matcher, ILUtility.VariableType.Argument, 1, "pos normalized");
-
-            //    matcher.MatchForward(true, new CodeMatch(instruction => instruction.opcode == OpCodes.Stloc_S && ((LocalBuilder)instruction.operand).LocalIndex == 21));
-            //    matcher.Advance(-3);
-
-            //    //matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Ldstr, "num3"));
-            //    //matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Ldloc_S, 1));
-            //    //matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Call, typeof(ILUtility).GetMethod("", BindingFlags.NonPublic | BindingFlags.Static)));
-
-            //    ILUtility.PrintFloat(matcher, ILUtility.VariableType.Local, 1, "_latitudeSeg");
-            //    ILUtility.PrintFloat(matcher, ILUtility.VariableType.Local, 5, "_longitudeSeg");
-
-            //    return matcher.InstructionEnumeration();
-            //}
-
-            //[HarmonyTranspiler, HarmonyPatch(typeof(UIBuildingGrid), "Update")]
-            //static IEnumerable<CodeInstruction> UIBuildingGrid_Update_Transpiler (IEnumerable<CodeInstruction> instructions)
-            //{
-            //    CodeMatcher matcher = new CodeMatcher(instructions);
-
-            //    matcher.MatchForward(true, new CodeMatch(OpCodes.Ldstr, "_CursorGratBox"));
-            //    matcher.Advance(5);
-            //    ILUtility.PrintIntArray(matcher, ILUtility.VariableType.Local, 17, "cursorIndices");
-
-            //    return matcher.InstructionEnumeration();
-            //}
-
-            //[HarmonyTranspiler, HarmonyPatch(typeof(PlatformSystem), nameof(PlatformSystem.GetReformType))]
-            //static IEnumerable<CodeInstruction> PlatformSystem_GetReformType_Transpiler (IEnumerable<CodeInstruction> instructions)
-            //{
-            //    CodeMatcher matcher = new CodeMatcher(instructions);
-
-            //    matcher.Start();
-
-            //    ILUtility.PrintByteArrayLength(matcher, ILUtility.VariableType.Argument, 0, typeof(PlatformSystem).GetField(nameof(PlatformSystem.reformData)), "reformData.Length");
-            //    ILUtility.PrintInt(matcher, ILUtility.VariableType.Argument, 1, "index");
-
-            //    return matcher.InstructionEnumeration();
-            //}
-
-            //static bool flag1 = true;
-
-            //[HarmonyPostfix, HarmonyPatch(typeof(UIBuildingGrid), "Update")]
-            //static void UIBuildingGrid_Update_Postfix (Material ___material)
-            //{
-            //    if (flag1)
-            //    {
-            //        Texture2D tex2d = (Texture2D)___material.GetTexture("_SegmentTable");
-            //        StringBuilder str = new StringBuilder();
-            //        for (int i = 0; i < 512; ++i)
-            //        {
-            //            Color color = tex2d.GetPixel(i, 0);
-            //            str.Append($"\r\n{i,+3}: ({color.r * 255,+3}, {color.g * 255,+3}, {color.b * 255,+3}, {color.a * 255,+3})");
-            //        }
-            //        Instance.Logger.LogInfo("_SegmentTable:" + str);
-            //        flag1 = false;
-            //    }
-            //}
-
-            //[HarmonyPostfix, HarmonyPatch(typeof(PerformanceMonitor), "BeginData")]
-            //static void PerformanceMonitor_BeginData_Postfix (ESaveDataEntry entry)
-            //{
-            //    Instance.Logger.LogInfo($"    PerformanceMonitor_BeginData_Postfix: {entry}");
-            //}
-
-            //[HarmonyTranspiler, HarmonyPatch(typeof(PlanetFactory), "Import")]
-            //static IEnumerable<CodeInstruction> PlanetFactory_Import_Transpiler (IEnumerable<CodeInstruction> instructions)
-            //{
-            //    CodeMatcher matcher = new CodeMatcher(instructions);
-
-            //    matcher.MatchForward(true, new CodeMatch(OpCodes.Stloc_3));
-            //    matcher.Advance(1);
-            //    ILUtility.PrintInt(matcher, ILUtility.VariableType.Local, 3, "import planet id");
-
-            //    return matcher.InstructionEnumeration();
-            //}
-
-            //[HarmonyPrefix, HarmonyPatch(typeof(PlanetFactory), "Export")]
-            //static void PlanetFactory_Export_Prefix (PlanetFactory __instance)
-            //{
-            //    Instance.Logger.LogInfo("export planet id: " + __instance.planetId);
-            //}
-
-            [HarmonyPrefix, HarmonyPatch(typeof(GuideMissionStandardMode), "Init")]
-            static void GuideMissionStandardMode_Init_Prefix (GameData _gameData)
-            {
-                Instance.Logger.LogInfo("GuideMissionStandardMode_Init_PrefixGuideMissionStandardMode_Init_PrefixGuideMissionStandardMode_Init_Prefix");
-                Instance.Logger.LogInfo("___gameData.localPlanet == null=" + (_gameData.localPlanet == null));
-                Instance.Logger.LogInfo("GameCamera.instance == null=" + (GameCamera.instance == null));
-            }
-
-            [HarmonyPrefix, HarmonyPatch(typeof(GameData), "ArrivePlanet")]
-            static void GameData_ArrivePlanet_Prefix (PlanetData planet, GameData __instance)
-            {
-                Instance.Logger.LogInfo("GameData_ArrivePlanet_PrefixGameData_ArrivePlanet_PrefixGameData_ArrivePlanet_Prefix");
-                Instance.Logger.LogInfo("__galaxy.birthPlanetId=" + __instance.galaxy.birthPlanetId);
-                Instance.Logger.LogInfo("planet == null=" + (planet == null));
+            [HarmonyPrefix, HarmonyPatch(typeof(PlanetGen), nameof(PlanetGen.SetPlanetTheme))]
+            static bool PlanetGen_SetPlanetTheme_Prefix (PlanetData planet, int[] themeIds) {
+                Instance.Logger.LogInfo($"planet.index: {planet.index}, planet.star.planets.Length: {planet.star.planets.Length}, themeIds.Length: {themeIds.Length}");
+                return true;
             }
         }
     }
