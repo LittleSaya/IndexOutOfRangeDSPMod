@@ -12,6 +12,8 @@ It's currently **UNRESTORABLE** after using this mod.
 
 And **BACKUP YOUR CONFIG FILE** if you are already using this mod.
 
+This mod is NOT COMPATIBLE with Galactic Scale 2 and will be DISABLED if launch with Galactic Scale 2.
+
 ## Introduce
 
 This mod allows you add new planets to your existing saved games (and modify original planets or birth point if you know what you are doing).
