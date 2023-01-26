@@ -17,6 +17,7 @@ using UnityEngine.Rendering;
 namespace DSPAddPlanet
 {
     [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
+    [BepInIncompatibility("dsp.galactic-scale.2")]
     public class Plugin : BaseUnityPlugin
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
