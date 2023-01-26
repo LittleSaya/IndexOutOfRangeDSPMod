@@ -22,7 +22,7 @@ namespace DSPAddPlanet
     {
         public const string PLUGIN_GUID = "IndexOutOfRange.DSPAddPlanet";
         public const string PLUGIN_NAME = "DSPAddPlanet";
-        public const string PLUGIN_VERSION = "0.2.2";
+        public const string PLUGIN_VERSION = "0.2.3";
 
         static public Plugin Instance { get => instance; }
         static private Plugin instance = null;

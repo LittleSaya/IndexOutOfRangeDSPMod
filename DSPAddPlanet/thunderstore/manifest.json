@@ -1,7 +1,7 @@
 {
   "name": "DSPAddPlanet",
   "description": "Add planets to your existing saved game (and modify original planets or change the birth point if you know what you are doing)",
-  "version_number": "0.2.2",
+  "version_number": "0.2.3",
   "dependencies": [
     "xiaoye97-BepInEx-5.4.17"
   ],
